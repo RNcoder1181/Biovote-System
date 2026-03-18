@@ -1,0 +1,1623 @@
+<!DOCTYPE html>
+<html lang="en" data-lang="en" data-theme="dark">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <meta name="theme-color" id="theme-color-meta" content="#11131A"/>
+  <title>BioVote · Secure Biometric Voting System</title>
+  <!-- jsPDF for PDF receipt export -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;600;700;900&family=Outfit:wght@300;400;600;700;800&family=Share+Tech+Mono&display=swap" rel="stylesheet"/>
+  <style>
+    /* ═══════════════════════════════════════════════════
+       THEME TOKENS — dark (default) & light
+    ═══════════════════════════════════════════════════ */
+    :root {
+      --bg:    #11131A; --bg1: #14161E; --bg2: #1A1D28;
+      --glass:       rgba(255,255,255,.07);
+      --glass-card:  rgba(255,255,255,.05);
+      --glass-hover: rgba(255,255,255,.10);
+      --glass-bdr:   rgba(255,255,255,.12);
+      --ac:#FF3B3B; --ac2:#CC2020; --ac3:#FF6E6E;
+      --grn:#3DDC84; --amb:#FFC048; --gold:#FFD700; --red:#FF3B3B;
+      --txt:#F0F2F8; --txt2:#9CA3BC; --dim:#5A607A;
+      --glow:0 0 20px rgba(255,59,59,.28); --glow2:0 0 42px rgba(255,59,59,.48);
+      --gglow:0 0 18px rgba(61,220,132,.42); --rglow:0 0 18px rgba(255,59,59,.52);
+      --xglow:0 0 18px rgba(255,215,0,.42);
+      --mono:'Share Tech Mono',monospace; --body:'Outfit',sans-serif;
+      --t-fast:.18s ease; --t-med:.28s cubic-bezier(.16,1,.3,1);
+      --overlay-bg:rgba(8,9,14,.92);
+    }
+    [data-theme="light"] {
+      --bg:#F2F3F7; --bg1:#ECEDF3; --bg2:#E4E5EE;
+      --glass:       rgba(0,0,0,.04);
+      --glass-card:  rgba(0,0,0,.03);
+      --glass-hover: rgba(0,0,0,.06);
+      --glass-bdr:   rgba(0,0,0,.1);
+      --txt:#1A1C26; --txt2:#4A5068; --dim:#9096B0;
+      --overlay-bg:rgba(220,222,235,.95);
+    }
+
+    /* ─── RESET ─── */
+    *,*::before,*::after{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+    html,body{height:100%;background:var(--bg);color:var(--txt);font-family:var(--body);overflow:hidden;transition:background .35s,color .35s}
+
+    /* ─── AMBIENT BG ─── */
+    body::before{content:'';position:fixed;inset:0;z-index:0;pointer-events:none;
+      background:radial-gradient(ellipse 80% 60% at 20% 10%,rgba(255,59,59,.06) 0%,transparent 60%),
+                 radial-gradient(ellipse 60% 50% at 80% 90%,rgba(255,59,59,.04) 0%,transparent 55%),
+                 radial-gradient(circle,rgba(255,59,59,.04) 1px,transparent 1px);
+      background-size:auto,auto,32px 32px;}
+    [data-theme="light"] body::before{background:radial-gradient(ellipse 80% 60% at 20% 10%,rgba(255,59,59,.04) 0%,transparent 60%),radial-gradient(circle,rgba(255,59,59,.03) 1px,transparent 1px);background-size:auto,28px 28px;}
+
+    /* ─── CORNER BRACKETS ─── */
+    .cb{position:fixed;width:36px;height:36px;z-index:60;pointer-events:none;opacity:.35;}
+    .cb::before,.cb::after{content:'';position:absolute;background:var(--ac);}
+    .cb::before{width:1.5px;height:100%;}.cb::after{width:100%;height:1.5px;}
+    .cb.tl{top:14px;left:14px;}.cb.tr{top:14px;right:14px;transform:scaleX(-1);}
+    .cb.bl{bottom:14px;left:14px;transform:scaleY(-1);}.cb.br{bottom:14px;right:14px;transform:scale(-1);}
+
+    /* ─── LAYOUT ─── */
+    .split{display:flex;height:100vh;width:100vw;position:relative;z-index:5;}
+    .vp{flex:3;display:flex;flex-direction:column;background:var(--bg1);border-right:1px solid var(--glass-bdr);overflow:hidden;min-width:0;}
+    .bp{flex:1.15;background:var(--bg);display:flex;flex-direction:column;overflow:hidden;min-width:240px;position:relative;}
+
+    /* ─── HEADER ─── */
+    .vh{position:relative;z-index:10;display:flex;align-items:center;justify-content:space-between;
+        padding:11px 24px;background:rgba(17,19,26,.88);backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);
+        border-bottom:1px solid var(--glass-bdr);}
+    [data-theme="light"] .vh{background:rgba(236,237,243,.9);}
+    .logo{display:flex;align-items:center;gap:10px;}
+    .logo-icon{width:34px;height:34px;background:var(--ac);border-radius:9px;display:flex;align-items:center;justify-content:center;flex-shrink:0;box-shadow:var(--glow);transition:transform var(--t-fast),box-shadow var(--t-fast);}
+    .logo-icon:hover{transform:scale(1.08);box-shadow:var(--glow2);}
+    .logo-icon svg{width:18px;height:18px;fill:#fff;}
+    .logo-name{font-family:'Orbitron',monospace;font-size:.98rem;font-weight:900;letter-spacing:.06em;}
+    .logo-name span{color:var(--ac);}
+    .logo-sub{font-size:.56rem;color:var(--txt2);margin-top:1px;letter-spacing:.03em;}
+    .hud-right{display:flex;align-items:center;gap:8px;}
+    .hclock{font-family:var(--mono);font-size:.65rem;letter-spacing:.05em;color:var(--txt2);}
+    .lpill{display:flex;align-items:center;gap:6px;background:rgba(61,220,132,.10);border:1px solid rgba(61,220,132,.28);
+           color:var(--grn);padding:4px 12px;border-radius:50px;font-size:.6rem;font-weight:700;letter-spacing:.06em;
+           animation:livePulse 2.4s ease-in-out infinite;}
+    @keyframes livePulse{0%,100%{box-shadow:0 0 0 0 rgba(61,220,132,0)}50%{box-shadow:0 0 0 6px rgba(61,220,132,.12)}}
+    .ldot{width:7px;height:7px;border-radius:50%;background:var(--grn);animation:dotBlink 1.6s ease-in-out infinite;}
+    @keyframes dotBlink{0%,100%{opacity:1}50%{opacity:.15}}
+
+    /* LANGUAGE + THEME TOGGLES */
+    .ctrl-group{display:flex;align-items:center;gap:6px;}
+    .lang-toggle{display:flex;align-items:center;background:rgba(255,255,255,.06);border:1px solid var(--glass-bdr);border-radius:8px;overflow:hidden;}
+    [data-theme="light"] .lang-toggle{background:rgba(0,0,0,.05);}
+    .lang-btn{padding:5px 10px;font-family:'Orbitron',monospace;font-size:.53rem;font-weight:700;letter-spacing:.07em;
+              cursor:pointer;border:none;background:transparent;color:var(--txt2);transition:all var(--t-fast);}
+    .lang-btn.active{background:var(--ac);color:#fff;}
+    .lang-btn:hover:not(.active){background:rgba(255,59,59,.12);color:var(--txt);}
+    .theme-btn{width:30px;height:30px;border-radius:8px;border:1px solid var(--glass-bdr);background:rgba(255,255,255,.06);
+               color:var(--txt2);cursor:pointer;font-size:.85rem;display:flex;align-items:center;justify-content:center;
+               transition:all var(--t-fast);}
+    [data-theme="light"] .theme-btn{background:rgba(0,0,0,.05);}
+    .theme-btn:hover{border-color:var(--ac);color:var(--ac);transform:scale(1.08);}
+
+    /* ─── SCREEN SWITCHER ─── */
+    .sw{position:relative;z-index:1;flex:1;display:flex;align-items:center;justify-content:center;padding:20px 24px;overflow-y:auto;}
+    .sc{display:none;width:100%;max-width:500px;animation:screenIn .32s cubic-bezier(.16,1,.3,1);}
+    .sc.on{display:block;}
+    @keyframes screenIn{from{opacity:0;transform:translateY(14px) scale(.98);}to{opacity:1;transform:none;}}
+
+    /* ─── CARD ─── */
+    .card{background:rgba(28,31,43,.75);backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);
+          border:1px solid var(--glass-bdr);border-radius:18px;padding:26px 28px;position:relative;
+          box-shadow:0 8px 48px rgba(0,0,0,.55),inset 0 1px 0 rgba(255,255,255,.07);transition:background .35s;}
+    [data-theme="light"] .card{background:rgba(255,255,255,.8);box-shadow:0 8px 40px rgba(0,0,0,.12),inset 0 1px 0 rgba(255,255,255,.9);}
+    .card::before{content:'';position:absolute;top:0;left:10%;right:10%;height:1px;background:linear-gradient(90deg,transparent,rgba(255,59,59,.55),transparent);border-radius:18px 18px 0 0;}
+    .sh{font-family:'Orbitron',monospace;font-size:.57rem;letter-spacing:.2em;color:var(--txt2);text-transform:uppercase;margin-bottom:14px;display:flex;align-items:center;gap:10px;}
+    .sh::after{content:'';flex:1;height:1px;background:linear-gradient(90deg,var(--glass-bdr),transparent);}
+    .sep{width:100%;height:1px;background:linear-gradient(90deg,transparent,rgba(255,59,59,.35),transparent);margin:14px 0;}
+
+    /* ─── STATS ─── */
+    .srow{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:14px;}
+    .scell{border:1px solid var(--glass-bdr);border-radius:10px;padding:12px 8px;text-align:center;
+           background:var(--glass-card);backdrop-filter:blur(8px);transition:border-color var(--t-fast);}
+    .scell:hover{border-color:rgba(255,59,59,.3);}
+    .sv{font-family:var(--mono);font-size:.95rem;color:var(--ac);}
+    .sl{font-size:.57rem;letter-spacing:.06em;color:var(--txt2);text-transform:uppercase;margin-top:3px;}
+    .chips{display:flex;flex-wrap:wrap;gap:5px;margin:10px 0;}
+    .chip{padding:3px 10px;border:1px solid rgba(255,59,59,.2);border-radius:20px;font-family:var(--mono);font-size:.56rem;letter-spacing:.05em;color:var(--ac3);}
+    .bl-name{font-family:'Orbitron',monospace;font-size:1.65rem;font-weight:900;letter-spacing:.18em;color:var(--ac);text-shadow:var(--glow2);}
+    .bl-tag{font-size:.59rem;letter-spacing:.1em;color:var(--txt2);margin-top:6px;text-transform:uppercase;}
+
+    /* ─── BUTTONS ─── */
+    .btn{width:100%;padding:14px 20px;border-radius:10px;border:none;font-family:var(--body);font-size:.9rem;font-weight:700;
+         cursor:pointer;letter-spacing:.02em;margin-top:8px;transition:transform var(--t-fast),box-shadow var(--t-fast),background var(--t-fast),border-color var(--t-fast);position:relative;overflow:hidden;}
+    .btn::after{content:'';position:absolute;inset:0;background:rgba(255,255,255,.08);opacity:0;transition:opacity var(--t-fast);}
+    .btn:hover::after{opacity:1;}
+    .btn:hover{transform:scale(1.025) translateY(-1px);}
+    .btn:active{transform:scale(.97);}
+    .btn:disabled{opacity:.3;cursor:not-allowed;transform:none!important;}
+    .btn:disabled::after{display:none;}
+    .btn.pri{background:var(--ac);color:#fff;box-shadow:0 6px 22px rgba(255,59,59,.3);}
+    .btn.pri:hover{box-shadow:0 10px 30px rgba(255,59,59,.45);}
+    .btn.ghost{background:var(--glass-card);backdrop-filter:blur(8px);border:1px solid var(--glass-bdr);
+               color:var(--txt2);font-family:'Orbitron',monospace;font-size:.57rem;letter-spacing:.12em;}
+    .btn.ghost:hover{border-color:rgba(255,59,59,.4);color:var(--txt);}
+    .btn.danger{background:rgba(255,59,59,.08);border:1px solid rgba(255,59,59,.25);color:var(--ac3);
+                font-family:'Orbitron',monospace;font-size:.57rem;letter-spacing:.1em;}
+    .btn.danger:hover{background:rgba(255,59,59,.18);}
+    .btn.webauthn{background:linear-gradient(135deg,rgba(61,220,132,.15),rgba(61,220,132,.06));
+                  border:1px solid rgba(61,220,132,.3);color:var(--grn);font-family:'Orbitron',monospace;font-size:.6rem;letter-spacing:.1em;}
+    .btn.webauthn:hover{background:rgba(61,220,132,.18);box-shadow:var(--gglow);}
+    .btn-xs{padding:8px;font-size:.62rem;opacity:.55;margin-top:5px;}
+    .btn-xs:hover{opacity:1;}
+
+    /* ─── METHOD CARDS ─── */
+    .mgrid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin:14px 0;}
+    .mc{border:1px solid var(--glass-bdr);border-radius:12px;padding:18px 8px 14px;text-align:center;cursor:pointer;
+        background:var(--glass-card);backdrop-filter:blur(8px);position:relative;
+        transition:border-color var(--t-fast),background var(--t-fast),transform var(--t-fast),box-shadow var(--t-fast);}
+    .mc:hover{border-color:rgba(255,59,59,.35);background:var(--glass-hover);transform:translateY(-2px);box-shadow:0 6px 20px rgba(255,59,59,.15);}
+    .mc.sel{border-color:var(--ac);background:rgba(255,59,59,.08);box-shadow:var(--glow);}
+    .mc.sel::before{content:'✓';position:absolute;top:7px;right:9px;font-size:.57rem;color:var(--ac);font-family:var(--mono);}
+    .mc-ico{font-size:1.55rem;margin-bottom:8px;display:block;}
+    .mc-nm{font-family:'Orbitron',monospace;font-size:.55rem;letter-spacing:.11em;color:var(--ac);}
+    .mc-ds{font-size:.67rem;color:var(--txt2);margin-top:3px;line-height:1.4;}
+
+    /* ─── INPUT ─── */
+    .fl{font-size:.57rem;letter-spacing:.14em;color:var(--txt2);text-transform:uppercase;margin-bottom:6px;display:flex;align-items:center;gap:8px;}
+    .fl::after{content:'';flex:1;height:1px;background:var(--glass-bdr);}
+    .iw{position:relative;margin-bottom:14px;}
+    input[type=text],input[type=password]{width:100%;background:rgba(255,255,255,.04);backdrop-filter:blur(6px);
+      border:1px solid var(--glass-bdr);border-radius:9px;padding:13px 40px 13px 16px;color:var(--txt);
+      font-family:var(--mono);font-size:1rem;letter-spacing:.14em;outline:none;transition:border-color var(--t-med),background var(--t-med),box-shadow var(--t-med);}
+    [data-theme="light"] input[type=text],[data-theme="light"] input[type=password]{background:rgba(0,0,0,.03);}
+    input:focus{border-color:rgba(255,59,59,.55);background:rgba(255,59,59,.05);box-shadow:var(--glow);}
+    input::placeholder{color:var(--dim);letter-spacing:.06em;font-size:.73rem;}
+    input.ok{border-color:rgba(61,220,132,.5);box-shadow:var(--gglow);}
+    input.bad{border-color:rgba(255,59,59,.55);box-shadow:var(--rglow);}
+    .iico{position:absolute;right:13px;top:50%;transform:translateY(-50%);font-size:.9rem;pointer-events:none;color:var(--txt2);}
+
+    /* ─── SCAN BOX ─── */
+    .scanbox{position:relative;height:164px;border:1px solid var(--glass-bdr);border-radius:12px;overflow:hidden;margin:12px 0;background:rgba(0,0,0,.52);display:flex;align-items:center;justify-content:center;}
+    .sgrid{position:absolute;inset:0;background-image:linear-gradient(rgba(255,59,59,.04) 1px,transparent 1px),linear-gradient(90deg,rgba(255,59,59,.04) 1px,transparent 1px);background-size:18px 18px;}
+    .sline{position:absolute;width:100%;height:2px;background:linear-gradient(90deg,transparent,var(--ac),transparent);top:0;animation:smv 1.6s linear infinite;box-shadow:var(--glow);}
+    @keyframes smv{0%{top:0}100%{top:100%}}
+    .scanbox.scanning .sline,.scanbox.verified .sline{display:none;}
+    .stxt{position:absolute;bottom:7px;left:50%;transform:translateX(-50%);font-family:var(--mono);font-size:.55rem;letter-spacing:.16em;color:var(--ac);white-space:nowrap;text-transform:uppercase;z-index:2;}
+    #fp-canvas-wrap{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;z-index:1;}
+    #fp-canvas{display:block;}
+    #iris-wrap{position:absolute;inset:0;display:none;align-items:center;justify-content:center;z-index:2;}
+    #iris-wrap.on{display:flex;}
+    .iris-eye{width:90px;height:90px;border-radius:50%;position:relative;overflow:hidden;border:2px solid var(--ac);box-shadow:var(--glow);background:radial-gradient(circle at 50% 50%,#1a0808 0%,#220d0d 30%,#160808 50%,#0d0404 100%);}
+    .iris-pupil{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:27px;height:27px;border-radius:50%;background:radial-gradient(circle at 40% 35%,#2a0808,#000);box-shadow:0 0 8px rgba(0,0,0,.8);}
+    .iris-pupil::after{content:'';position:absolute;top:5px;left:4px;width:7px;height:7px;border-radius:50%;background:rgba(255,255,255,.38);}
+    #iris-canvas{position:absolute;inset:0;border-radius:50%;}
+    .iris-scan-line{position:absolute;width:100%;height:2px;top:0;left:0;background:linear-gradient(90deg,transparent,rgba(255,59,59,.7),transparent);box-shadow:0 0 6px rgba(255,59,59,.5);animation:irisLine 1.4s linear infinite;display:none;}
+    .scanbox.scanning .iris-scan-line{display:block;}
+    @keyframes irisLine{0%{top:0}100%{top:100%}}
+    .iris-reticle{position:absolute;width:106px;height:106px;border-radius:50%;border:2px solid rgba(255,59,59,.38);animation:spin 4s linear infinite;}
+    .iris-reticle::before{content:'';position:absolute;inset:-2px;border-radius:50%;border:2px dashed rgba(255,59,59,.14);animation:spin 2s linear infinite reverse;}
+    @keyframes spin{from{transform:rotate(0)}to{transform:rotate(360deg)}}
+    .ados{position:absolute;inset:0;}
+    .ado{position:absolute;width:5px;height:5px;border-radius:50%;background:var(--ac);box-shadow:0 0 6px var(--ac);animation:adoPulse 1s ease-in-out infinite;}
+    @keyframes adoPulse{0%,100%{opacity:.2;transform:scale(.8)}50%{opacity:1;transform:scale(1.3)}}
+    .scanbox.verified .iris-eye{border-color:var(--grn);box-shadow:var(--gglow);}
+    .scanbox.denied .iris-eye{border-color:var(--red);box-shadow:var(--rglow);}
+    .scanbox.verified .iris-reticle{border-color:rgba(61,220,132,.5);}
+
+    /* ─── PROGRESS ─── */
+    .pw{margin:10px 0;}
+    .ptop{display:flex;justify-content:space-between;font-size:.57rem;letter-spacing:.1em;color:var(--txt2);margin-bottom:5px;text-transform:uppercase;}
+    .ptrack{height:5px;background:rgba(255,255,255,.07);border-radius:3px;overflow:hidden;position:relative;}
+    [data-theme="light"] .ptrack{background:rgba(0,0,0,.08);}
+    .pfill{height:100%;width:0%;background:linear-gradient(90deg,var(--ac2),var(--ac),#FF8C8C);border-radius:3px;box-shadow:var(--glow);position:relative;}
+    .pfill::after{content:'';position:absolute;right:0;top:-3px;width:3px;height:11px;background:#fff;border-radius:2px;box-shadow:0 0 6px #fff;}
+    .ptrack::after{content:'';position:absolute;inset:0;background:linear-gradient(90deg,transparent 0%,rgba(255,255,255,.1) 50%,transparent 100%);background-size:200% 100%;animation:shimmer 2s linear infinite;opacity:0;}
+    .ptrack.active::after{opacity:1;}
+    @keyframes shimmer{from{background-position:200% 0}to{background-position:-200% 0}}
+
+    /* ─── VERIFIED STRIP ─── */
+    .vstrip{display:flex;align-items:center;gap:10px;padding:10px 14px;border:1px solid rgba(61,220,132,.28);border-radius:10px;background:rgba(61,220,132,.06);backdrop-filter:blur(8px);margin-top:12px;opacity:0;transform:translateY(6px);transition:all .4s cubic-bezier(.16,1,.3,1);}
+    .vstrip.on{opacity:1;transform:none;}
+    .vstrip-txt{font-family:'Orbitron',monospace;font-size:.68rem;color:var(--grn);letter-spacing:.07em;}
+    .vstrip-sub{font-family:var(--mono);font-size:.57rem;color:var(--txt2);margin-top:2px;}
+    .vstrip-chk{margin-left:auto;color:var(--grn);font-size:1.2rem;flex-shrink:0;}
+
+    /* ─── MSG ─── */
+    .msg{text-align:center;padding:10px 14px;border-radius:8px;font-family:var(--mono);font-size:.6rem;letter-spacing:.07em;margin-top:8px;display:none;backdrop-filter:blur(8px);}
+    .msg.on{display:flex;align-items:center;justify-content:center;gap:7px;}
+    .msg.info{border:1px solid rgba(255,59,59,.2);color:var(--ac3);background:rgba(255,59,59,.06);}
+    .msg.ok{border:1px solid rgba(61,220,132,.28);color:var(--grn);background:rgba(61,220,132,.06);}
+    .msg.err{border:1px solid rgba(255,59,59,.32);color:var(--ac3);background:rgba(255,59,59,.07);}
+    .msg.warn{border:1px solid rgba(255,192,72,.28);color:var(--amb);background:rgba(255,192,72,.06);}
+
+    /* ─── DUP BOX ─── */
+    .dupbox{border:1.5px solid rgba(255,59,59,.38);border-radius:12px;padding:16px;text-align:center;background:rgba(255,59,59,.06);backdrop-filter:blur(8px);margin:12px 0;display:none;animation:screenIn .4s ease;}
+    .dico{font-size:2rem;margin-bottom:5px;}
+    .dtit{font-family:'Orbitron',monospace;font-size:.74rem;color:var(--ac3);letter-spacing:.15em;}
+    .dsb{font-size:.68rem;color:var(--txt2);margin-top:5px;}
+    .dhsh{font-family:var(--mono);font-size:.56rem;color:var(--dim);margin-top:8px;padding:6px 10px;border:1px solid rgba(255,59,59,.12);border-radius:6px;word-break:break-all;}
+
+    /* ─── EVM ─── */
+    .evm-hdr{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:14px;}
+    .evm-tit{font-family:'Orbitron',monospace;font-size:.72rem;letter-spacing:.14em;color:var(--txt);}
+    .evm-sb{font-size:.56rem;letter-spacing:.07em;color:var(--txt2);margin-top:3px;text-transform:uppercase;}
+    .btag{text-align:right;font-family:var(--mono);font-size:.56rem;color:var(--txt2);}
+    .btag .bv{color:var(--ac);font-size:.66rem;}
+    .vtag{display:inline-flex;align-items:center;gap:5px;background:rgba(61,220,132,.08);border:1px solid rgba(61,220,132,.22);color:var(--grn);padding:4px 12px;border-radius:50px;font-size:.6rem;font-weight:700;letter-spacing:.05em;text-transform:uppercase;margin-bottom:14px;}
+    .clist{display:flex;flex-direction:column;gap:5px;margin-bottom:12px;}
+    .cand{display:flex;align-items:center;gap:12px;padding:12px 14px;border:1px solid var(--glass-bdr);border-radius:10px;cursor:pointer;background:var(--glass-card);backdrop-filter:blur(6px);position:relative;overflow:hidden;transition:border-color var(--t-fast),background var(--t-fast),transform var(--t-fast),box-shadow var(--t-fast);}
+    .cand::before{content:'';position:absolute;left:0;top:0;bottom:0;width:3px;border-radius:2px 0 0 2px;background:transparent;transition:background var(--t-fast);}
+    .cand:hover{border-color:rgba(255,59,59,.32);background:var(--glass-hover);transform:translateX(3px);box-shadow:0 4px 16px rgba(255,59,59,.12);}
+    .cand:hover::before{background:var(--ac);}
+    .cand.voted{border-color:rgba(61,220,132,.35);background:rgba(61,220,132,.06);}
+    .cand.voted::before{background:var(--grn);}
+    .cand.dis{opacity:.2;pointer-events:none;}
+    .psym{width:40px;height:40px;border-radius:10px;border:1px solid var(--glass-bdr);display:flex;align-items:center;justify-content:center;font-size:1.1rem;background:rgba(0,0,0,.3);flex-shrink:0;transition:border-color var(--t-fast);}
+    .cand:hover .psym{border-color:rgba(255,59,59,.4);}
+    .cand.voted .psym{border-color:rgba(61,220,132,.4);}
+    .pn-main{font-size:.86rem;font-weight:700;color:var(--txt);transition:color var(--t-fast);}
+    .cand:hover .pn-main{color:var(--ac3);}
+    .cand.voted .pn-main{color:var(--grn);}
+    .pc-code{font-family:var(--mono);font-size:.56rem;color:var(--dim);letter-spacing:.09em;margin-top:1px;}
+    .vlt{width:23px;height:23px;border-radius:50%;border:2px solid var(--dim);display:flex;align-items:center;justify-content:center;font-size:.72rem;transition:all var(--t-fast);color:transparent;margin-left:auto;flex-shrink:0;}
+    .cand.voted .vlt{border-color:var(--grn);background:rgba(61,220,132,.15);color:var(--grn);}
+
+    /* ─── TX STRIP ─── */
+    .tx-strip{display:none;flex-direction:column;gap:3px;margin:10px 0;}
+    .tx-strip.on{display:flex;}
+    .tx-row{display:flex;align-items:center;gap:9px;padding:7px 12px;border:1px solid var(--glass-bdr);border-radius:8px;font-family:var(--mono);font-size:.59rem;letter-spacing:.04em;color:var(--txt2);background:var(--glass-card);backdrop-filter:blur(6px);transition:all var(--t-fast);}
+    .tx-row.act{border-color:rgba(255,59,59,.35);color:var(--ac3);background:rgba(255,59,59,.06);}
+    .tx-row.dn{border-color:rgba(61,220,132,.3);color:var(--grn);background:rgba(61,220,132,.05);}
+    .tx-ico{flex-shrink:0;font-size:.8rem;}
+
+    /* ─── SUCCESS ─── */
+    .sico{text-align:center;font-size:3rem;margin:6px 0;animation:popIn .5s cubic-bezier(.175,.885,.32,1.275);}
+    @keyframes popIn{from{transform:scale(0);opacity:0}to{transform:scale(1);opacity:1}}
+    .stit{text-align:center;font-family:'Orbitron',monospace;font-size:.86rem;color:var(--grn);text-shadow:var(--gglow);letter-spacing:.22em;margin-top:4px;}
+    .ssb{text-align:center;font-size:.63rem;color:var(--txt2);letter-spacing:.07em;margin-top:4px;}
+    .ccbox{border:1px solid rgba(255,59,59,.22);border-radius:10px;padding:18px;text-align:center;margin:14px 0;background:rgba(255,59,59,.04);backdrop-filter:blur(8px);}
+    .cclbl{font-size:.57rem;letter-spacing:.17em;color:var(--txt2);text-transform:uppercase;margin-bottom:8px;}
+    .ccnum{font-family:var(--mono);font-size:1.58rem;letter-spacing:.28em;color:var(--ac);text-shadow:var(--glow2);}
+    .ccnote{font-size:.6rem;color:var(--txt2);letter-spacing:.04em;margin-top:8px;line-height:1.65;}
+    .hrow{display:flex;align-items:center;gap:8px;padding:7px 12px;border:1px solid var(--glass-bdr);border-radius:7px;margin-top:5px;background:var(--glass-card);backdrop-filter:blur(6px);}
+    .hl{font-size:.55rem;letter-spacing:.1em;color:var(--dim);text-transform:uppercase;flex-shrink:0;}
+    .hv{font-family:var(--mono);font-size:.59rem;color:var(--txt2);word-break:break-all;}
+    #redirect-bar{margin-top:14px;}
+    .rbar-txt{font-family:var(--mono);font-size:.58rem;letter-spacing:.09em;color:var(--txt2);margin-bottom:5px;}
+    .rtrack{height:3px;background:rgba(255,255,255,.07);border-radius:2px;overflow:hidden;}
+    .rfill{height:100%;width:100%;background:var(--ac);border-radius:2px;transition:width 1s linear;}
+
+    /* ─── RIGHT PANEL ─── */
+    .bh{padding:13px 17px;border-bottom:1px solid var(--glass-bdr);}
+    .bhtitle{font-size:.58rem;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:var(--ac);margin-bottom:2px;}
+    .bhsub{font-size:.6rem;color:var(--txt2);}
+    .bb{flex:1;overflow-y:auto;padding:13px;display:flex;flex-direction:column;gap:10px;}
+    .bb::-webkit-scrollbar{width:3px;}
+    .bb::-webkit-scrollbar-thumb{background:rgba(255,59,59,.2);border-radius:2px;}
+    .status-block{background:var(--glass-card);backdrop-filter:blur(12px);border:1px solid var(--glass-bdr);border-radius:12px;padding:12px 14px;}
+    .sb-lbl{font-size:.53rem;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--txt2);margin-bottom:9px;display:flex;justify-content:space-between;align-items:center;}
+    .sb-lbl span{color:var(--ac);}
+    .enc-row{display:flex;align-items:center;gap:8px;padding:7px 10px;border-radius:8px;background:rgba(255,255,255,.02);margin-bottom:4px;border:1px solid transparent;transition:all var(--t-fast);}
+    .enc-row:last-child{margin-bottom:0;}
+    .enc-row.active{background:rgba(255,59,59,.07);border-color:rgba(255,59,59,.16);}
+    .enc-row.done{background:rgba(61,220,132,.05);border-color:rgba(61,220,132,.16);}
+    .enc-dot{width:8px;height:8px;border-radius:50%;background:var(--dim);flex-shrink:0;transition:all var(--t-fast);}
+    .enc-row.active .enc-dot{background:var(--ac);box-shadow:0 0 8px var(--ac);}
+    .enc-row.done .enc-dot{background:var(--grn);box-shadow:0 0 8px var(--grn);}
+    .enc-label{font-family:var(--mono);font-size:.58rem;color:var(--txt2);flex:1;transition:color var(--t-fast);}
+    .enc-row.active .enc-label{color:var(--ac3);}
+    .enc-row.done .enc-label{color:var(--grn);}
+    .enc-status{font-family:var(--mono);font-size:.53rem;color:var(--dim);flex-shrink:0;transition:color var(--t-fast);}
+    .enc-row.active .enc-status{color:var(--ac3);}
+    .enc-row.done .enc-status{color:var(--grn);}
+    .hbox{background:var(--glass-card);backdrop-filter:blur(12px);border:1px solid var(--glass-bdr);border-radius:12px;padding:12px 14px;}
+    .hlbl{font-size:.53rem;font-weight:700;letter-spacing:.11em;text-transform:uppercase;color:var(--txt2);margin-bottom:6px;display:flex;justify-content:space-between;align-items:center;}
+    .hlbl span{color:var(--ac);}
+    .hstream{font-family:var(--mono);font-size:.52rem;color:var(--txt2);line-height:1.55;word-break:break-all;max-height:62px;overflow:hidden;position:relative;}
+    .hstream::after{content:'';position:absolute;bottom:0;left:0;right:0;height:20px;background:linear-gradient(transparent,var(--glass-card));}
+    .hline{animation:hfade .26s ease;}
+    @keyframes hfade{from{opacity:0;transform:translateY(-4px)}to{opacity:1;transform:none}}
+    .vlog{background:var(--glass-card);backdrop-filter:blur(12px);border:1px solid var(--glass-bdr);border-radius:12px;padding:12px 14px;}
+    .vloglbl{font-size:.53rem;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--txt2);margin-bottom:7px;display:flex;justify-content:space-between;}
+    .vloglbl span{color:var(--ac);}
+    .ve{display:flex;align-items:center;gap:7px;padding:5px 0;border-bottom:1px solid rgba(255,255,255,.04);animation:slideIn .28s ease;}
+    @keyframes slideIn{from{opacity:0;transform:translateX(-5px)}to{opacity:1;transform:none}}
+    .ve:last-child{border-bottom:none;}
+    .vdot{width:6px;height:6px;border-radius:50%;background:var(--grn);flex-shrink:0;}
+    .vdot.r{background:var(--red);}.vdot.a{background:var(--amb);}
+    .vh3{font-family:var(--mono);font-size:.52rem;color:var(--txt2);flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+    .vstatus{font-size:.51rem;font-weight:700;padding:2px 7px;border-radius:4px;flex-shrink:0;}
+    .vstatus.v{background:rgba(61,220,132,.12);color:var(--grn);}
+    .vstatus.d{background:rgba(255,59,59,.12);color:var(--ac3);}
+    .vstatus.a{background:rgba(255,192,72,.12);color:var(--amb);}
+    .icard{background:rgba(255,59,59,.025);backdrop-filter:blur(8px);border:1px solid rgba(255,59,59,.1);border-radius:12px;padding:12px 14px;}
+    .ititle{font-size:.6rem;font-weight:700;color:var(--ac3);margin-bottom:7px;display:flex;align-items:center;gap:5px;}
+    .ipts{list-style:none;}
+    .ipts li{font-size:.6rem;color:var(--txt2);padding:3px 0;border-bottom:1px solid rgba(255,255,255,.04);display:flex;align-items:flex-start;gap:6px;line-height:1.45;}
+    .ipts li:last-child{border-bottom:none;}
+    .ipts li::before{content:'›';color:var(--ac);flex-shrink:0;margin-top:1px;}
+    .afab{position:absolute;bottom:14px;right:14px;z-index:20;width:32px;height:32px;background:var(--glass-card);backdrop-filter:blur(8px);border:1px solid var(--glass-bdr);border-radius:8px;color:var(--txt2);font-size:.82rem;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all var(--t-fast);}
+    .afab:hover{border-color:var(--ac);color:var(--ac);box-shadow:var(--glow);transform:scale(1.08);}
+
+    /* ─── CONFETTI CANVAS ─── */
+    #confetti-canvas{position:fixed;inset:0;pointer-events:none;z-index:400;}
+
+    /* ─── ADMIN OVERLAY ─── */
+    #admin-ov{display:none;position:fixed;inset:0;z-index:200;background:var(--overlay-bg);backdrop-filter:blur(20px);align-items:flex-start;justify-content:center;padding:20px;overflow-y:auto;}
+    #admin-ov.on{display:flex;}
+    .a-inner{width:100%;max-width:680px;padding-top:10px;}
+    .a-title{font-family:'Orbitron',monospace;font-size:.98rem;font-weight:900;letter-spacing:.17em;color:var(--txt);}
+    .a-title span{color:var(--ac);}
+    .a-sub{font-size:.58rem;letter-spacing:.12em;color:var(--txt2);margin-top:3px;text-transform:uppercase;}
+    .a-close{position:fixed;top:18px;right:22px;background:rgba(255,59,59,.08);backdrop-filter:blur(8px);border:1px solid rgba(255,59,59,.25);color:var(--ac);padding:7px 16px;border-radius:8px;cursor:pointer;font-family:'Orbitron',monospace;font-size:.57rem;letter-spacing:.1em;transition:all var(--t-fast);z-index:201;}
+    .a-close:hover{background:rgba(255,59,59,.2);transform:scale(1.05);}
+    .plbl{font-size:.58rem;letter-spacing:.17em;color:var(--txt2);text-transform:uppercase;margin-bottom:8px;}
+    .pdisp{display:flex;gap:8px;justify-content:center;margin-bottom:16px;}
+    .pd{width:31px;height:31px;border-radius:50%;border:2px solid var(--glass-bdr);transition:all var(--t-fast);background:var(--glass-card);backdrop-filter:blur(4px);}
+    .pd.filled{background:var(--ac);border-color:var(--ac);box-shadow:var(--glow);}
+    .pd.wrong{background:var(--red);border-color:var(--red);animation:shake .4s ease;}
+    @keyframes shake{0%,100%{transform:translateX(0)}20%{transform:translateX(-8px)}40%{transform:translateX(8px)}60%{transform:translateX(-5px)}80%{transform:translateX(5px)}}
+    .ppad{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;max-width:210px;margin:0 auto 10px;}
+    .pk{padding:12px;border:1px solid var(--glass-bdr);border-radius:9px;text-align:center;cursor:pointer;font-family:var(--mono);font-size:.96rem;color:var(--txt);background:var(--glass-card);backdrop-filter:blur(6px);transition:all var(--t-fast);user-select:none;}
+    .pk:hover{border-color:rgba(255,59,59,.4);color:var(--ac);transform:scale(1.05);background:rgba(255,59,59,.07);}
+    .pk:active{transform:scale(.9);}
+    .pk.del{color:var(--ac3);}
+    .phint{text-align:center;font-family:var(--mono);font-size:.56rem;color:var(--txt2);letter-spacing:.07em;min-height:16px;margin-top:4px;}
+    .ag{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:16px;}
+    .ac{background:var(--glass-card);backdrop-filter:blur(14px);border:1px solid var(--glass-bdr);border-radius:12px;padding:17px;}
+    .ac.aw{grid-column:1/-1;}
+    .act{font-family:'Orbitron',monospace;font-size:.55rem;letter-spacing:.15em;color:var(--txt2);text-transform:uppercase;margin-bottom:10px;}
+    .bignum{font-family:var(--mono);font-size:2.1rem;color:var(--ac);letter-spacing:.05em;}
+    .bnsb{font-size:.56rem;letter-spacing:.07em;color:var(--txt2);text-transform:uppercase;margin-top:2px;}
+    .abtns{display:flex;gap:8px;margin-top:16px;flex-wrap:wrap;}
+    .mrow{display:flex;align-items:center;justify-content:space-between;margin-bottom:4px;}
+    .mbar{height:5px;background:rgba(255,255,255,.06);border-radius:3px;overflow:hidden;margin-bottom:10px;}
+    .mfill{height:100%;border-radius:3px;transition:width 1s cubic-bezier(.16,1,.3,1);}
+    .txli{display:flex;gap:10px;padding:5px 8px;border:1px solid var(--glass-bdr);border-radius:6px;margin-bottom:3px;font-family:var(--mono);font-size:.54rem;align-items:center;}
+    .logli{display:flex;align-items:flex-start;gap:8px;padding:5px 0;border-bottom:1px solid var(--glass-bdr);}
+    .logli:last-child{border-bottom:none;}
+    .ldt{width:7px;height:7px;border-radius:50%;margin-top:2px;flex-shrink:0;}
+    .ldt.lred{background:var(--red);}.ldt.lor{background:var(--amb);}
+    .ltxt{font-size:.6rem;color:var(--txt);}
+    .ltm{font-family:var(--mono);font-size:.54rem;color:var(--txt2);}
+    .nolog{font-family:var(--mono);font-size:.6rem;color:var(--grn);padding:8px 0;letter-spacing:.06em;}
+
+    /* ─── RESULTS ─── */
+    #results-ov{display:none;position:fixed;inset:0;z-index:300;background:var(--overlay-bg);backdrop-filter:blur(20px);overflow-y:auto;padding:40px 20px;}
+    #results-ov.on{display:block;}
+    .r-close{position:fixed;top:16px;left:18px;background:rgba(255,59,59,.08);backdrop-filter:blur(8px);border:1px solid rgba(255,59,59,.22);color:var(--ac);padding:7px 16px;border-radius:8px;cursor:pointer;font-family:'Orbitron',monospace;font-size:.57rem;letter-spacing:.1em;transition:all var(--t-fast);z-index:301;}
+    .r-close:hover{background:rgba(255,59,59,.2);transform:scale(1.05);}
+    .r-inner{max-width:580px;margin:0 auto;}
+    .r-banner{text-align:center;margin-bottom:22px;}
+    .r-title{font-family:'Orbitron',monospace;font-size:1.22rem;font-weight:900;letter-spacing:.2em;color:var(--ac);}
+    .r-sub{font-size:.59rem;letter-spacing:.1em;color:var(--txt2);margin-top:4px;text-transform:uppercase;}
+    .r-winner{background:rgba(255,215,0,.04);backdrop-filter:blur(8px);border:1px solid rgba(255,215,0,.2);border-radius:14px;padding:20px;text-align:center;margin-bottom:20px;}
+    .rw-lbl{font-size:.57rem;letter-spacing:.14em;color:var(--gold);text-transform:uppercase;margin-bottom:8px;}
+    .rw-name{font-family:'Orbitron',monospace;font-size:1.32rem;font-weight:900;color:var(--gold);}
+    .rw-votes{font-family:var(--mono);font-size:.79rem;color:var(--txt2);margin-top:4px;}
+    .rw-pct{font-family:var(--mono);font-size:1.62rem;color:var(--gold);}
+    .rbar-wrap{margin-bottom:14px;}
+    .rbar-top{display:flex;justify-content:space-between;margin-bottom:5px;}
+    .rbar-nm{font-size:.84rem;font-weight:600;color:var(--txt);}
+    .rbar-cnt{font-family:var(--mono);font-size:.67rem;color:var(--ac3);}
+    .rbar-trk{height:8px;background:rgba(255,255,255,.06);border-radius:4px;overflow:hidden;}
+    .rbar-fill{height:100%;border-radius:4px;transition:width 1.1s cubic-bezier(.16,1,.3,1);}
+    .r-stats-row{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin:18px 0;}
+    .r-stat{background:var(--glass-card);backdrop-filter:blur(8px);border:1px solid var(--glass-bdr);border-radius:10px;padding:14px;text-align:center;}
+    .r-sv{font-family:var(--mono);font-size:1.08rem;color:var(--ac);}
+    .r-sl{font-size:.55rem;letter-spacing:.07em;color:var(--txt2);margin-top:3px;text-transform:uppercase;}
+
+    /* ─── MISC ANIMATIONS ─── */
+    @keyframes pfloat{0%{transform:translateY(100vh);opacity:0}10%{opacity:.32}90%{opacity:.08}100%{transform:translateY(-60px) translateX(18px);opacity:0}}
+    @keyframes buzzerFlash{0%,100%{background:rgba(255,59,59,0)}20%,60%{background:rgba(255,59,59,.1)}40%,80%{background:rgba(255,59,59,.05)}}
+    .buzzing{animation:buzzerFlash .35s ease 4;}
+
+    /* ─── RESPONSIVE ─── */
+    @media(max-width:820px){.bp{display:none;}.vp{flex:1;}.cb{display:none;}}
+    @media(max-width:640px){
+      .vh{padding:10px 14px;}
+      .hclock{display:none;}
+      .card{padding:18px 14px;border-radius:14px;}
+      .mgrid{grid-template-columns:1fr;}
+      .srow,.r-stats-row{grid-template-columns:repeat(2,1fr);}
+      .bl-name{font-size:1.3rem;}
+      .sw{padding:14px 12px;}
+      .ag{grid-template-columns:1fr;}
+    }
+    @media(max-width:380px){.lang-toggle{display:none;}.srow{grid-template-columns:1fr 1fr;}.ctrl-group{gap:4px;}}
+    @media(max-width:280px){.bl-name{font-size:1.05rem;}.btn{font-size:.8rem;padding:11px 12px;}.card{padding:14px 10px;}}
+    @media(orientation:landscape) and (max-height:480px){
+      .sw{padding:8px 14px;}
+      .card{padding:14px 18px;}
+      .scanbox{height:120px;}
+      .bl-name{font-size:1.25rem;}
+      .sep{margin:8px 0;}
+    }
+  </style>
+</head>
+<body>
+  <!-- Corner brackets -->
+  <div class="cb tl" aria-hidden="true"></div><div class="cb tr" aria-hidden="true"></div>
+  <div class="cb bl" aria-hidden="true"></div><div class="cb br" aria-hidden="true"></div>
+  <!-- Confetti canvas (hidden until vote success) -->
+  <canvas id="confetti-canvas" aria-hidden="true"></canvas>
+
+  <div class="split" role="main">
+    <!-- ══════════════════ LEFT VOTE PANEL ══════════════════ -->
+    <div class="vp" role="region" aria-label="Voting Interface">
+      <header class="vh" role="banner">
+        <div class="logo">
+          <div class="logo-icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24"><path d="M9 11H7v2h2v-2zm4 0h-2v2h2v-2zm4 0h-2v2h2v-2zm2-7h-1V2h-2v2H8V2H6v2H5c-1.11 0-1.99.9-1.99 2L3 20c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 16H5V9h14v11z"/></svg>
+          </div>
+          <div>
+            <div class="logo-name">BIO<span>VOTE</span></div>
+            <div class="logo-sub" id="txt-subtitle">Quantum Secure Electoral System</div>
+          </div>
+        </div>
+        <div class="hud-right">
+          <div class="hclock" id="clock" aria-live="polite">--:--:-- UTC</div>
+          <div class="lpill" role="status" aria-label="System status: Live"><div class="ldot" aria-hidden="true"></div><span id="txt-live">LIVE</span></div>
+          <div class="ctrl-group">
+            <div class="lang-toggle" role="group" aria-label="Language">
+              <button class="lang-btn active" id="btn-en" onclick="setLang('en')" aria-label="English" aria-pressed="true">EN</button>
+              <button class="lang-btn" id="btn-hi" onclick="setLang('hi')" aria-label="Hindi" aria-pressed="false">हि</button>
+            </div>
+            <button class="theme-btn" onclick="toggleTheme()" id="theme-btn" aria-label="Toggle dark/light mode" title="Toggle theme">🌙</button>
+          </div>
+        </div>
+      </header>
+
+      <div class="sw" role="region" aria-label="Current voting step">
+
+        <!-- WELCOME -->
+        <div class="sc on" id="sw">
+          <div class="card">
+            <div style="text-align:center;margin-bottom:18px;">
+              <div class="bl-name">BIOVOTE</div>
+              <div class="bl-tag" id="txt-tagline">Quantum Secure Electoral System · National Commission</div>
+            </div>
+            <div class="sep"></div>
+            <div class="srow" role="list" aria-label="System statistics">
+              <div class="scell" role="listitem"><div class="sv" id="sw-v" aria-live="polite">0</div><div class="sl" id="txt-vcl">Votes Cast</div></div>
+              <div class="scell" role="listitem"><div class="sv" id="sw-b" style="font-size:.76rem;">BLK-316F</div><div class="sl" id="txt-bid">Block ID</div></div>
+              <div class="scell" role="listitem"><div class="sv" style="color:var(--grn);">LIVE</div><div class="sl" id="txt-ns">Node Status</div></div>
+            </div>
+            <div class="chips" role="list">
+              <div class="chip" role="listitem">● BIOMETRIC ENGINE</div>
+              <div class="chip" role="listitem">● BLOCKCHAIN SYNC</div>
+              <div class="chip" role="listitem">● AES-256 READY</div>
+              <div class="chip" role="listitem">● OFFLINE NODE</div>
+            </div>
+            <div class="sep"></div>
+            <button class="btn pri" onclick="go('sm')" aria-label="Begin voter authentication" id="txt-begin-btn">▶ &nbsp; BEGIN VOTER AUTHENTICATION</button>
+            <p style="text-align:center;font-size:.56rem;letter-spacing:.07em;color:var(--dim);margin-top:8px;" id="txt-privacy">YOUR VOTE IS COMPLETELY PRIVATE · NO DATA LEAVES THIS DEVICE</p>
+          </div>
+        </div>
+
+        <!-- METHOD SELECT -->
+        <div class="sc" id="sm">
+          <div class="card">
+            <div class="sh">Choose Authentication Method</div>
+            <p style="font-size:.76rem;color:var(--txt2);text-align:center;margin-bottom:2px;" id="txt-method-sub">Select how you want to verify your identity</p>
+            <div class="mgrid" role="radiogroup" aria-label="Authentication method">
+              <div class="mc" id="m-fp" onclick="selMethod('fp')" role="radio" aria-checked="false" tabindex="0" aria-label="Fingerprint" onkeydown="if(event.key==='Enter'||event.key===' ')selMethod('fp')">
+                <span class="mc-ico" aria-hidden="true">🫆</span><div class="mc-nm">FINGERPRINT</div><div class="mc-ds" id="txt-fp-ds">Touch sensor biometric scan</div>
+              </div>
+              <div class="mc" id="m-iris" onclick="selMethod('iris')" role="radio" aria-checked="false" tabindex="0" aria-label="Iris scan" onkeydown="if(event.key==='Enter'||event.key===' ')selMethod('iris')">
+                <span class="mc-ico" aria-hidden="true">👁</span><div class="mc-nm">IRIS SCAN</div><div class="mc-ds" id="txt-iris-ds">Retinal pattern recognition</div>
+              </div>
+              <div class="mc" id="m-both" onclick="selMethod('both')" role="radio" aria-checked="false" tabindex="0" aria-label="Dual factor" onkeydown="if(event.key==='Enter'||event.key===' ')selMethod('both')">
+                <span class="mc-ico" aria-hidden="true">🔐</span><div class="mc-nm">DUAL FACTOR</div><div class="mc-ds" id="txt-dual-ds">Fingerprint + Iris · Max security</div>
+              </div>
+            </div>
+            <div class="msg on info" id="meth-msg" role="status">SELECT A METHOD ABOVE TO CONTINUE</div>
+            <button class="btn pri" id="meth-next" onclick="go('sa')" disabled aria-label="Confirm method and proceed" style="margin-top:12px;">◈ &nbsp; <span id="txt-confirm-btn">CONFIRM &amp; PROCEED</span></button>
+            <button class="btn ghost btn-xs" onclick="go('sw')" aria-label="Back to welcome">← <span id="txt-back1">Back to Welcome</span></button>
+          </div>
+        </div>
+
+        <!-- AUTH -->
+        <div class="sc" id="sa">
+          <div class="card">
+            <div class="sh" id="auth-head">Biometric Verification</div>
+            <div class="iw">
+              <label class="fl" for="aid"><span id="txt-id-label">Voter ID / National ID Number</span></label>
+              <input type="text" id="aid" placeholder="XXXX XXXX XXXX" maxlength="14" autocomplete="off"
+                oninput="onAid(this)" onkeydown="if(event.key==='Enter')doScan()"
+                aria-label="12-digit Voter ID" aria-required="true" aria-describedby="auth-msg"/>
+              <div class="iico" id="aidico" aria-hidden="true">—</div>
+            </div>
+            <div class="fl" id="bio-lbl" style="margin-top:2px;">Biometric Sensor</div>
+            <div class="scanbox" id="scanbox" role="img" aria-label="Biometric scanner" aria-live="polite">
+              <div class="sgrid" aria-hidden="true"></div>
+              <div class="sline" aria-hidden="true"></div>
+              <div id="fp-canvas-wrap" aria-hidden="true"><canvas id="fp-canvas" width="118" height="148"></canvas></div>
+              <div id="iris-wrap" aria-hidden="true">
+                <div class="iris-reticle"></div>
+                <div class="iris-eye"><canvas id="iris-canvas" width="90" height="90"></canvas><div class="iris-pupil"></div><div class="iris-scan-line"></div></div>
+                <div class="ados" id="ados"></div>
+              </div>
+              <div class="stxt" id="stxt" aria-live="polite">AWAITING BIOMETRIC INPUT</div>
+            </div>
+            <div class="pw" id="sprog" style="display:none;" role="progressbar" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100" aria-label="Scan progress">
+              <div class="ptop"><span id="stglbl">INITIALIZING</span><span id="spct" aria-live="polite">0%</span></div>
+              <div class="ptrack" id="ptrack"><div class="pfill" id="pfill"></div></div>
+            </div>
+            <div class="vstrip" id="vcard" role="status" aria-live="polite">
+              <div style="font-size:1.2rem;flex-shrink:0;" aria-hidden="true">✔</div>
+              <div><div class="vstrip-txt" id="txt-verified">IDENTITY VERIFIED</div><div class="vstrip-sub" id="vmeta">Biometric match confirmed</div></div>
+              <div class="vstrip-chk" aria-hidden="true">✓</div>
+            </div>
+            <div class="dupbox" id="dupbox" role="alert">
+              <div class="dico" aria-hidden="true">🚫</div>
+              <div class="dtit" id="txt-dup-tit">DUPLICATE VOTE DETECTED</div>
+              <div class="dsb" id="txt-dup-sub">This Voter ID has already cast a vote</div>
+              <div class="dhsh" id="duphsh">PREV BLOCK HASH: —</div>
+            </div>
+            <div class="msg" id="auth-msg" role="status" aria-live="polite"></div>
+            <!-- WebAuthn device biometric button -->
+            <button class="btn webauthn" onclick="startWebAuthn()" id="webauthn-btn" aria-label="Use device built-in fingerprint (Windows Hello / Touch ID)" style="margin-top:6px;">
+              🔑 &nbsp; <span id="txt-wauthn">Use Device Fingerprint (No Scanner Needed)</span>
+            </button>
+            <button class="btn pri" id="scanBtn" onclick="doScan()" style="margin-top:6px;" aria-label="Start biometric scan">◈ &nbsp; <span id="txt-scan-btn">AUTHENTICATE BIOMETRICS</span></button>
+            <button class="btn ghost btn-xs" onclick="cancelScan()" aria-label="Change method">← <span id="txt-change-method">Change Method</span></button>
+          </div>
+        </div>
+
+        <!-- EVM -->
+        <div class="sc" id="sevm">
+          <div class="card">
+            <div class="evm-hdr">
+              <div><div class="evm-tit" id="evm-tit">CAST YOUR VOTE</div><div class="evm-sb">ANONYMOUS · AES-256 ENCRYPTED · IMMUTABLE</div></div>
+              <div class="btag">BOOTH<br><span class="bv" id="bid">—</span></div>
+            </div>
+            <div class="vtag" id="evm-voter-tag" aria-live="polite">✔ Verified · Proceed to Vote</div>
+            <div class="clist" role="listbox" aria-label="Select a candidate">
+              <div class="cand" data-p="Lotus Alliance" data-c="LA-001" onclick="castVote(this)" role="option" tabindex="0" aria-label="Lotus Alliance LA-001" onkeydown="if(event.key==='Enter')castVote(this)"><div class="psym" aria-hidden="true">🪷</div><div><div class="pn-main">Lotus Alliance</div><div class="pc-code">CODE · LA-001</div></div><div class="vlt" aria-hidden="true">◉</div></div>
+              <div class="cand" data-p="United Front" data-c="UF-002" onclick="castVote(this)" role="option" tabindex="0" aria-label="United Front UF-002" onkeydown="if(event.key==='Enter')castVote(this)"><div class="psym" aria-hidden="true">🤝</div><div><div class="pn-main">United Front</div><div class="pc-code">CODE · UF-002</div></div><div class="vlt" aria-hidden="true">◉</div></div>
+              <div class="cand" data-p="Progressive Cycle" data-c="PC-003" onclick="castVote(this)" role="option" tabindex="0" aria-label="Progressive Cycle PC-003" onkeydown="if(event.key==='Enter')castVote(this)"><div class="psym" aria-hidden="true">🚲</div><div><div class="pn-main">Progressive Cycle</div><div class="pc-code">CODE · PC-003</div></div><div class="vlt" aria-hidden="true">◉</div></div>
+              <div class="cand" data-p="Knowledge Party" data-c="KP-004" onclick="castVote(this)" role="option" tabindex="0" aria-label="Knowledge Party KP-004" onkeydown="if(event.key==='Enter')castVote(this)"><div class="psym" aria-hidden="true">📖</div><div><div class="pn-main">Knowledge Party</div><div class="pc-code">CODE · KP-004</div></div><div class="vlt" aria-hidden="true">◉</div></div>
+              <div class="cand" data-p="People's Star" data-c="PS-005" onclick="castVote(this)" role="option" tabindex="0" aria-label="People's Star PS-005" onkeydown="if(event.key==='Enter')castVote(this)"><div class="psym" aria-hidden="true">⭐</div><div><div class="pn-main">People's Star</div><div class="pc-code">CODE · PS-005</div></div><div class="vlt" aria-hidden="true">◉</div></div>
+            </div>
+            <div class="tx-strip" id="txstrip" role="status" aria-live="polite">
+              <div class="tx-row" id="ts0"><span class="tx-ico" aria-hidden="true">🔒</span>AES-256 encrypting vote...</div>
+              <div class="tx-row" id="ts1"><span class="tx-ico" aria-hidden="true">⛓</span>Writing to blockchain...</div>
+              <div class="tx-row" id="ts2"><span class="tx-ico" aria-hidden="true">📡</span>Syncing with national server...</div>
+              <div class="tx-row" id="ts3"><span class="tx-ico" aria-hidden="true">✅</span>Vote sealed · Immutable record created</div>
+            </div>
+            <div class="msg" id="evm-msg" role="alert"></div>
+          </div>
+        </div>
+
+        <!-- SUCCESS -->
+        <div class="sc" id="ssucc">
+          <div class="card">
+            <div class="sico" aria-hidden="true">✅</div>
+            <div class="stit" id="txt-vote-rec">VOTE RECORDED</div>
+            <div class="ssb" id="txt-sealed">Your vote is permanently sealed on the national blockchain</div>
+            <div class="sep"></div>
+            <div class="ccbox">
+              <div class="cclbl" id="txt-conf-lbl">◈ Vote Confirmation Code</div>
+              <div class="ccnum" id="conf-code" aria-live="polite">——————</div>
+              <div class="ccnote" id="txt-conf-note">Keep this code private · Verify at the audit portal<br>Candidate is <strong style="color:var(--ac3)">NOT shown</strong> to protect ballot secrecy</div>
+            </div>
+            <div class="hrow"><span class="hl">TX HASH</span><span class="hv" id="succ-hash">—</span></div>
+            <div class="hrow" style="margin-top:4px;"><span class="hl">BLOCK</span><span class="hv" id="succ-block" style="color:var(--gold);">—</span></div>
+            <button class="btn ghost" onclick="downloadReceipt()" style="margin-top:12px;" aria-label="Download PDF vote receipt">⬇ &nbsp; <span id="txt-dl-receipt">Download Receipt (PDF)</span></button>
+            <div id="redirect-bar" style="margin-top:12px;">
+              <div class="rbar-txt" id="redirect-txt" aria-live="polite">Next voter in 4s…</div>
+              <div class="rtrack"><div class="rfill" id="rfill"></div></div>
+            </div>
+          </div>
+        </div>
+
+      </div><!-- .sw -->
+    </div><!-- .vp -->
+
+    <!-- ══════════════════ RIGHT SECURITY PANEL ══════════════════ -->
+    <div class="bp" role="complementary" aria-label="Security monitor">
+      <div class="bh">
+        <div class="bhtitle">🔐 <span id="txt-sec-title">Biometric Security Layer</span></div>
+        <div class="bhsub" id="txt-sec-sub">Real-time encryption · Fraud prevention active</div>
+      </div>
+      <div class="bb">
+        <div class="status-block">
+          <div class="sb-lbl">Encryption Pipeline <span id="scan-lbl">IDLE</span></div>
+          <div class="enc-row" id="enc1"><div class="enc-dot"></div><div class="enc-label" id="txt-e1">Raw Biometric Capture</div><div class="enc-status" id="enc1s">—</div></div>
+          <div class="enc-row" id="enc2"><div class="enc-dot"></div><div class="enc-label" id="txt-e2">SHA-256 Hash Generation</div><div class="enc-status" id="enc2s">—</div></div>
+          <div class="enc-row" id="enc3"><div class="enc-dot"></div><div class="enc-label" id="txt-e3">Duplicate Hash Check</div><div class="enc-status" id="enc3s">—</div></div>
+          <div class="enc-row" id="enc4"><div class="enc-dot"></div><div class="enc-label" id="txt-e4">Vote Sealed to Vault</div><div class="enc-status" id="enc4s">—</div></div>
+        </div>
+        <div class="hbox">
+          <div class="hlbl">Live Scan Output <span id="stream-lbl">IDLE</span></div>
+          <div class="hstream" id="hstream" aria-live="off"><div style="color:var(--dim);font-size:.52rem;font-family:var(--mono);opacity:.5">— waiting for scan —</div></div>
+        </div>
+        <div class="vlog">
+          <div class="vloglbl"><span id="txt-log">Voter Activity Log</span> <span id="vcnt" aria-live="polite">0 votes</span></div>
+          <div id="vlist" role="log" aria-live="polite"><div style="font-size:.55rem;color:var(--dim);font-family:var(--mono);text-align:center;padding:6px 0;">No activity yet</div></div>
+        </div>
+        <div class="icard">
+          <div class="ititle">🛡 <span id="txt-prot-title">How Your Data is Protected</span></div>
+          <ul class="ipts">
+            <li id="txt-p1">Fingerprint never stored — only one-way hash</li>
+            <li id="txt-p2">SHA-256 hash cannot be reversed to biometric data</li>
+            <li id="txt-p3">Matching hash = duplicate vote automatically blocked</li>
+            <li id="txt-p4">All votes encrypted with AES-256 before storage</li>
+            <li id="txt-p5">Voter identity is NOT linked to the recorded vote</li>
+          </ul>
+        </div>
+      </div>
+      <button class="afab" onclick="openAdminGate()" aria-label="Admin panel" title="Admin">🔒</button>
+    </div>
+
+  </div><!-- .split -->
+
+  <!-- ══════════════════ ADMIN OVERLAY ══════════════════ -->
+  <div id="admin-ov" role="dialog" aria-modal="true" aria-labelledby="admin-title">
+    <div class="a-inner">
+      <div id="pin-scr" style="max-width:310px;margin:0 auto;">
+        <div style="text-align:center;margin-bottom:22px;">
+          <div style="font-size:2.1rem;margin-bottom:8px;" aria-hidden="true">🔐</div>
+          <div class="a-title" id="admin-title">ADMIN <span>ACCESS</span></div>
+          <div class="a-sub">Enter 6-digit security PIN</div>
+        </div>
+        <div class="card">
+          <div class="plbl">Security PIN</div>
+          <div class="pdisp" role="group" aria-label="PIN display">
+            <div class="pd" id="pd0"></div><div class="pd" id="pd1"></div><div class="pd" id="pd2"></div><div class="pd" id="pd3"></div><div class="pd" id="pd4"></div><div class="pd" id="pd5"></div>
+          </div>
+          <div class="ppad" role="group" aria-label="PIN keypad">
+            <div class="pk" onclick="pinKey('1')" role="button" tabindex="0" aria-label="1" onkeydown="if(event.key==='Enter')pinKey('1')">1</div><div class="pk" onclick="pinKey('2')" role="button" tabindex="0" aria-label="2" onkeydown="if(event.key==='Enter')pinKey('2')">2</div><div class="pk" onclick="pinKey('3')" role="button" tabindex="0" aria-label="3" onkeydown="if(event.key==='Enter')pinKey('3')">3</div>
+            <div class="pk" onclick="pinKey('4')" role="button" tabindex="0" aria-label="4" onkeydown="if(event.key==='Enter')pinKey('4')">4</div><div class="pk" onclick="pinKey('5')" role="button" tabindex="0" aria-label="5" onkeydown="if(event.key==='Enter')pinKey('5')">5</div><div class="pk" onclick="pinKey('6')" role="button" tabindex="0" aria-label="6" onkeydown="if(event.key==='Enter')pinKey('6')">6</div>
+            <div class="pk" onclick="pinKey('7')" role="button" tabindex="0" aria-label="7" onkeydown="if(event.key==='Enter')pinKey('7')">7</div><div class="pk" onclick="pinKey('8')" role="button" tabindex="0" aria-label="8" onkeydown="if(event.key==='Enter')pinKey('8')">8</div><div class="pk" onclick="pinKey('9')" role="button" tabindex="0" aria-label="9" onkeydown="if(event.key==='Enter')pinKey('9')">9</div>
+            <div class="pk" onclick="pinClr()" role="button" tabindex="0" aria-label="Clear" onkeydown="if(event.key==='Enter')pinClr()" style="font-size:.57rem;">CLR</div><div class="pk" onclick="pinKey('0')" role="button" tabindex="0" aria-label="0" onkeydown="if(event.key==='Enter')pinKey('0')">0</div><div class="pk del" onclick="pinBk()" role="button" tabindex="0" aria-label="Backspace" onkeydown="if(event.key==='Enter')pinBk()">⌫</div>
+          </div>
+          <div class="phint" id="phint" aria-live="polite"></div>
+          <div class="msg" id="pin-msg" role="alert" aria-live="assertive"></div>
+          <button class="btn ghost btn-xs" onclick="closeAdmin()" style="margin-top:8px;opacity:.45;" aria-label="Cancel">✕ Cancel</button>
+        </div>
+      </div>
+      <div id="dash-scr" style="display:none;">
+        <button class="a-close" onclick="closeAdmin()" aria-label="Lock and exit">✕ Lock &amp; Exit</button>
+        <div style="text-align:center;margin-bottom:16px;"><div class="a-title">ADMIN <span>DASHBOARD</span></div><div class="a-sub">Election Control Centre · Classified</div></div>
+        <div class="ag">
+          <div class="ac">
+            <div class="act">Total Votes</div>
+            <div class="bignum" id="a-tot" aria-live="polite">0</div><div class="bnsb">votes recorded</div>
+            <div class="sep" style="margin:10px 0;"></div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
+              <div><div style="color:var(--dim);font-size:.52rem;letter-spacing:.08em;text-transform:uppercase;margin-bottom:2px;">Session</div><div style="font-family:var(--mono);font-size:.86rem;color:var(--ac);" id="a-sess">0</div></div>
+              <div><div style="color:var(--dim);font-size:.52rem;letter-spacing:.08em;text-transform:uppercase;margin-bottom:2px;">Turnout</div><div style="font-family:var(--mono);font-size:.86rem;color:var(--gold);" id="a-turn">0.0%</div></div>
+              <div><div style="color:var(--dim);font-size:.52rem;letter-spacing:.08em;text-transform:uppercase;margin-bottom:2px;">Block No.</div><div style="font-family:var(--mono);font-size:.86rem;color:var(--ac);" id="a-blk">0</div></div>
+              <div><div style="color:var(--dim);font-size:.52rem;letter-spacing:.08em;text-transform:uppercase;margin-bottom:2px;">Fraud Att.</div><div style="font-family:var(--mono);font-size:.86rem;color:var(--ac3);" id="a-fraud">0</div></div>
+            </div>
+          </div>
+          <div class="ac"><div class="act">⚠ Security Log</div><div id="a-susp" aria-live="polite"></div></div>
+          <div class="ac aw"><div class="act">Live Vote Distribution</div><div id="a-bars"></div></div>
+          <div class="ac aw"><div class="act">⛓ Blockchain TX Feed</div><div id="a-tx" style="max-height:130px;overflow-y:auto;" aria-live="polite"></div></div>
+        </div>
+        <div class="abtns">
+          <button class="btn ghost" onclick="simVotes()" style="padding:9px 16px;width:auto;font-size:.6rem;" aria-label="Simulate 10 votes">▶ Simulate 10 Votes</button>
+          <button class="btn" onclick="openResults()" style="padding:9px 16px;width:auto;font-size:.6rem;border:1px solid var(--gold);color:var(--gold);background:rgba(255,215,0,.04);" aria-label="View results">🏆 View Results</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════════════ RESULTS OVERLAY ══════════════════ -->
+  <div id="results-ov" role="dialog" aria-modal="true" aria-labelledby="results-heading">
+    <button class="r-close" onclick="closeResults()" aria-label="Back to admin">← Back to Admin</button>
+    <div class="r-inner">
+      <div class="r-banner"><div class="r-title" id="results-heading">ELECTION RESULTS</div><div class="r-sub" id="r-ts">Final Count · —</div></div>
+      <div class="r-winner" aria-label="Winner">
+        <div class="rw-lbl">🏆 Winning Party</div><div class="rw-name" id="rw-name">—</div><div class="rw-votes" id="rw-votes">—</div><div class="rw-pct" id="rw-pct">—</div>
+      </div>
+      <div id="r-bars" role="list"></div>
+      <div class="r-stats-row" role="list">
+        <div class="r-stat" role="listitem"><div class="r-sv" id="rs-tot">0</div><div class="r-sl">Total Votes</div></div>
+        <div class="r-stat" role="listitem"><div class="r-sv" id="rs-turn">0%</div><div class="r-sl">Voter Turnout</div></div>
+        <div class="r-stat" role="listitem"><div class="r-sv" id="rs-fraud">0</div><div class="r-sl">Fraud Attempts</div></div>
+      </div>
+      <div style="margin-top:20px;max-width:480px;margin-left:auto;margin-right:auto;">
+        <div style="border:1px solid rgba(255,59,59,.18);border-radius:12px;padding:16px;background:rgba(255,59,59,.04);backdrop-filter:blur(8px);margin-bottom:8px;">
+          <div style="font-family:var(--mono);font-size:.56rem;letter-spacing:.07em;color:var(--ac3);margin-bottom:6px;">⚠ Election Closure Action</div>
+          <div style="font-size:.68rem;color:var(--txt2);margin-bottom:10px;line-height:1.55;">Permanently erases all vote records, blockchain data, and logs.</div>
+          <button class="btn danger" onclick="clearAndRestart()" style="margin-top:0;" aria-label="Clear all data">🗑 &nbsp; Clear All Data · Start New Election</button>
+        </div>
+        <button class="btn ghost" onclick="closeResults()" aria-label="Return to admin">← Return to Admin Dashboard</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    /* ═══════════════════════════════════════════════════
+       LANGUAGE MODULE
+    ═══════════════════════════════════════════════════ */
+    const LANG = {
+      en: {
+        subtitle:'Quantum Secure Electoral System', live:'LIVE',
+        tagline:'Quantum Secure Electoral System · National Commission',
+        vcl:'Votes Cast', bid:'Block ID', ns:'Node Status',
+        beginBtn:'▶ \u00a0 BEGIN VOTER AUTHENTICATION',
+        privacy:'YOUR VOTE IS COMPLETELY PRIVATE · NO DATA LEAVES THIS DEVICE',
+        methodSub:'Select how you want to verify your identity',
+        fpDs:'Touch sensor biometric scan', irisDs:'Retinal pattern recognition', dualDs:'Fingerprint + Iris · Max security',
+        confirmBtn:'CONFIRM & PROCEED', back1:'Back to Welcome',
+        idLabel:'Voter ID / National ID Number',
+        wauthn:'Use Device Fingerprint (No Scanner Needed)',
+        scanBtn:'AUTHENTICATE BIOMETRICS', changeMethod:'Change Method',
+        verified:'IDENTITY VERIFIED',
+        dupTit:'DUPLICATE VOTE DETECTED', dupSub:'This Voter ID has already cast a vote',
+        evmTit:'CAST YOUR VOTE', voteRec:'VOTE RECORDED',
+        sealed:'Your vote is permanently sealed on the national blockchain',
+        confLbl:'◈ Vote Confirmation Code',
+        confNote:'Keep this code private · Verify at the audit portal',
+        dlReceipt:'Download Receipt (PDF)',
+        secTitle:'Biometric Security Layer', secSub:'Real-time encryption · Fraud prevention active',
+        e1:'Raw Biometric Capture', e2:'SHA-256 Hash Generation', e3:'Duplicate Hash Check', e4:'Vote Sealed to Vault',
+        log:'Voter Activity Log', protTitle:'How Your Data is Protected',
+        p1:'Fingerprint never stored — only one-way hash',
+        p2:'SHA-256 hash cannot be reversed to biometric data',
+        p3:'Matching hash = duplicate vote automatically blocked',
+        p4:'All votes encrypted with AES-256 before storage',
+        p5:'Voter identity is NOT linked to the recorded vote',
+      },
+      hi: {
+        subtitle:'क्वांटम सुरक्षित चुनाव प्रणाली', live:'सक्रिय',
+        tagline:'क्वांटम सुरक्षित मतदान प्रणाली · राष्ट्रीय आयोग',
+        vcl:'मत डाले', bid:'ब्लॉक आईडी', ns:'नोड स्थिति',
+        beginBtn:'▶ \u00a0 मतदाता प्रमाणीकरण शुरू करें',
+        privacy:'आपका मत पूर्णतः गोपनीय है · कोई डेटा इस डिवाइस से नहीं जाएगा',
+        methodSub:'अपनी पहचान सत्यापित करने का तरीका चुनें',
+        fpDs:'टच सेंसर बायोमेट्रिक स्कैन', irisDs:'रेटिनल पैटर्न पहचान', dualDs:'फिंगरप्रिंट + आईरिस · अधिकतम सुरक्षा',
+        confirmBtn:'पुष्टि करें और आगे बढ़ें', back1:'वापस जाएं',
+        idLabel:'मतदाता पहचान / राष्ट्रीय आईडी नंबर',
+        wauthn:'डिवाइस फिंगरप्रिंट उपयोग करें (स्कैनर की जरूरत नहीं)',
+        scanBtn:'बायोमेट्रिक प्रमाणीकरण करें', changeMethod:'तरीका बदलें',
+        verified:'पहचान सत्यापित',
+        dupTit:'डुप्लीकेट मत पाया गया', dupSub:'इस मतदाता आईडी ने पहले ही मत डाल दिया है',
+        evmTit:'अपना मत डालें', voteRec:'मत दर्ज हो गया',
+        sealed:'आपका मत राष्ट्रीय ब्लॉकचेन पर स्थायी रूप से सील कर दिया गया है',
+        confLbl:'◈ मत पुष्टि कोड',
+        confNote:'इस कोड को गोपनीय रखें · ऑडिट पोर्टल पर सत्यापित करें',
+        dlReceipt:'रसीद डाउनलोड करें (PDF)',
+        secTitle:'बायोमेट्रिक सुरक्षा परत', secSub:'रियल-टाइम एन्क्रिप्शन · धोखाधड़ी रोकथाम सक्रिय',
+        e1:'रॉ बायोमेट्रिक कैप्चर', e2:'SHA-256 हैश जनरेशन', e3:'डुप्लीकेट हैश जांच', e4:'मत वॉल्ट में सील',
+        log:'मतदाता गतिविधि लॉग', protTitle:'आपका डेटा कैसे सुरक्षित है',
+        p1:'फिंगरप्रिंट छवि कभी संग्रहीत नहीं — केवल एकतरफा हैश',
+        p2:'SHA-256 हैश को बायोमेट्रिक डेटा में वापस नहीं बदला जा सकता',
+        p3:'समान हैश = डुप्लीकेट मत स्वचालित रूप से अवरुद्ध',
+        p4:'सभी मत संग्रहण से पहले AES-256 से एन्क्रिप्टेड',
+        p5:'मतदाता की पहचान दर्ज मत से जुड़ी नहीं है',
+      }
+    };
+    let currentLang = localStorage.getItem('bvLang') || 'en';
+    function setLang(lang) {
+      currentLang = lang;
+      localStorage.setItem('bvLang', lang);
+      document.documentElement.setAttribute('lang', lang === 'hi' ? 'hi' : 'en');
+      const L = LANG[lang];
+      const set = (id, val) => { const el = document.getElementById(id); if (el) el.textContent = val; };
+      Object.keys(L).forEach(k => set('txt-'+k, L[k]));
+      set('txt-subtitle', L.subtitle); set('txt-live', L.live); set('txt-tagline', L.tagline);
+      set('txt-vcl', L.vcl); set('txt-bid', L.bid); set('txt-ns', L.ns);
+      set('txt-begin-btn', L.beginBtn); set('txt-privacy', L.privacy);
+      set('txt-method-sub', L.methodSub); set('txt-fp-ds', L.fpDs);
+      set('txt-iris-ds', L.irisDs); set('txt-dual-ds', L.dualDs);
+      set('txt-confirm-btn', L.confirmBtn); set('txt-back1', L.back1);
+      set('txt-id-label', L.idLabel); set('txt-wauthn', L.wauthn);
+      set('txt-scan-btn', L.scanBtn); set('txt-change-method', L.changeMethod);
+      set('txt-verified', L.verified); set('txt-dup-tit', L.dupTit); set('txt-dup-sub', L.dupSub);
+      set('evm-tit', L.evmTit); set('txt-vote-rec', L.voteRec); set('txt-sealed', L.sealed);
+      set('txt-conf-lbl', L.confLbl); set('txt-conf-note', L.confNote); set('txt-dl-receipt', L.dlReceipt);
+      set('txt-sec-title', L.secTitle); set('txt-sec-sub', L.secSub);
+      set('txt-e1', L.e1); set('txt-e2', L.e2); set('txt-e3', L.e3); set('txt-e4', L.e4);
+      set('txt-log', L.log); set('txt-prot-title', L.protTitle);
+      set('txt-p1', L.p1); set('txt-p2', L.p2); set('txt-p3', L.p3); set('txt-p4', L.p4); set('txt-p5', L.p5);
+      document.getElementById('btn-en').classList.toggle('active', lang === 'en');
+      document.getElementById('btn-hi').classList.toggle('active', lang === 'hi');
+      document.getElementById('btn-en').setAttribute('aria-pressed', lang === 'en');
+      document.getElementById('btn-hi').setAttribute('aria-pressed', lang === 'hi');
+    }
+    setLang(currentLang);
+
+    /* ═══════════════════════════════════════════════════
+       DARK / LIGHT THEME TOGGLE
+    ═══════════════════════════════════════════════════ */
+    let isDark = localStorage.getItem('bvTheme') !== 'light';
+    function applyTheme(dark) {
+      isDark = dark;
+      document.documentElement.setAttribute('data-theme', dark ? 'dark' : 'light');
+      document.getElementById('theme-btn').textContent = dark ? '🌙' : '☀️';
+      document.getElementById('theme-color-meta').setAttribute('content', dark ? '#11131A' : '#F2F3F7');
+      localStorage.setItem('bvTheme', dark ? 'dark' : 'light');
+    }
+    function toggleTheme() { applyTheme(!isDark); }
+    applyTheme(isDark);
+
+    /* ═══════════════════════════════════════════════════
+       AUDIO MODULE — expanded Web Audio
+    ═══════════════════════════════════════════════════ */
+    const AC = window.AudioContext ? new AudioContext() : null;
+
+    // Core tone primitive
+    function tone(f, dur, type, vol, startDelay = 0) {
+      if (!AC) return;
+      try {
+        AC.resume();
+        const o = AC.createOscillator();
+        const g = AC.createGain();
+        // Optional slight chorus for warmth
+        const st = AC.currentTime + startDelay;
+        o.connect(g); g.connect(AC.destination);
+        o.frequency.value = f; o.type = type || 'sine';
+        g.gain.setValueAtTime(0, st);
+        g.gain.linearRampToValueAtTime(vol || .08, st + 0.01);
+        g.gain.exponentialRampToValueAtTime(0.001, st + dur);
+        o.start(st); o.stop(st + dur);
+      } catch(e) {}
+    }
+
+    // Progress-bar tick — very short click every 50ms
+    function tickTone(pct) {
+      if (!AC) return;
+      // Pitch rises as scan progresses: 200Hz → 800Hz
+      const f = 200 + (pct / 100) * 600;
+      tone(f, 0.04, 'square', 0.025);
+    }
+
+    // Stage-transition chime
+    function stageTone(stageIdx) {
+      const notes = [330, 392, 494, 587, 659];
+      tone(notes[stageIdx % notes.length], 0.12, 'sine', 0.06);
+    }
+
+    // Success fanfare — three-note ascending chord
+    function successBeep() {
+      tone(523, 0.14, 'sine', 0.10);
+      tone(659, 0.18, 'sine', 0.09, 0.12);
+      tone(784, 0.26, 'sine', 0.08, 0.24);
+      tone(1047, 0.35, 'triangle', 0.06, 0.38);
+    }
+
+    // Buzzer alarm — sawtooth descending
+    function buzzerAlarm() {
+      if (!AC) return;
+      [280, 220, 280, 180, 280].forEach((f, i) => tone(f, 0.16, 'sawtooth', 0.12, i * 0.18));
+      document.body.classList.add('buzzing');
+      setTimeout(() => document.body.classList.remove('buzzing'), 1100);
+    }
+
+    // Soft click for UI interactions
+    function clickTone() { tone(800, 0.05, 'sine', 0.04); }
+
+    /* ═══════════════════════════════════════════════════
+       HAPTIC FEEDBACK MODULE
+       navigator.vibrate works on Android Chrome over HTTPS
+    ═══════════════════════════════════════════════════ */
+    function haptic(pattern) {
+      try { if (navigator.vibrate) navigator.vibrate(pattern); } catch(e) {}
+    }
+    const HAPTIC_SCAN    = [200, 100, 200];   // double-pulse on scan start
+    const HAPTIC_SUCCESS = [50, 30, 50, 30, 100]; // quick taps + long on success
+    const HAPTIC_ERROR   = [400];             // single long buzz on error
+
+    /* ═══════════════════════════════════════════════════
+       STATE & LOCALSTORAGE
+    ═══════════════════════════════════════════════════ */
+    const ADMIN_PIN = '123456', REGISTERED = 1247;
+    const S = {
+      votes:0, blocks:12847, sessVotes:0,
+      pv:{'Lotus Alliance':0,'United Front':0,'Progressive Cycle':0,'Knowledge Party':0,"People's Star":0},
+      voted:new Set(), suspLog:[], txLog:[],
+      lastTxHash:'', lastBlock:'', lastConf:'',
+    };
+    (function loadState() {
+      try {
+        const d = JSON.parse(localStorage.getItem('bv9') || '{}');
+        if (d.votes !== undefined) S.votes = d.votes;
+        if (d.blocks !== undefined) S.blocks = d.blocks;
+        if (d.pv) Object.assign(S.pv, d.pv);
+        if (d.voted) S.voted = new Set(d.voted);
+        if (d.suspLog) S.suspLog = d.suspLog;
+        if (d.txLog) S.txLog = d.txLog;
+      } catch(e) {}
+    })();
+    function save() {
+      try {
+        localStorage.setItem('bv9', JSON.stringify({
+          votes:S.votes, blocks:S.blocks, pv:S.pv,
+          voted:[...S.voted], suspLog:S.suspLog.slice(-40), txLog:S.txLog.slice(-40)
+        }));
+        localStorage.setItem('bv9_voteCount', S.votes);
+      } catch(e) {}
+    }
+    const PCOLS = {'Lotus Alliance':'#FF3B3B','United Front':'#4A9FFF','Progressive Cycle':'#3DDC84','Knowledge Party':'#FFD700',"People's Star":'#C084FC'};
+
+    /* ═══════════════════════════════════════════════════
+       generateHash — cryptographically random, 40-char alphanumeric
+    ═══════════════════════════════════════════════════ */
+    function generateHash(length = 40) {
+      const chars = '0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ';
+      const buf = new Uint8Array(length);
+      window.crypto.getRandomValues(buf);
+      return Array.from(buf, v => chars[v % chars.length]).join('');
+    }
+    const genHash = () => generateHash(64);
+
+    /* ═══════════════════════════════════════════════════
+       CLOCK
+    ═══════════════════════════════════════════════════ */
+    setInterval(() => {
+      document.getElementById('clock').textContent = new Date().toUTCString().split(' ')[4] + ' UTC';
+    }, 1000);
+
+    /* ═══════════════════════════════════════════════════
+       AMBIENT PARTICLES
+    ═══════════════════════════════════════════════════ */
+    (function spawnParticles() {
+      const c = document.createElement('div');
+      c.style.cssText = 'position:fixed;inset:0;pointer-events:none;z-index:2;overflow:hidden;';
+      document.body.appendChild(c);
+      for (let i = 0; i < 16; i++) {
+        const p = document.createElement('div');
+        p.style.cssText = `position:absolute;width:2px;height:2px;border-radius:50%;left:${Math.random()*100}vw;background:var(--ac);opacity:${Math.random()*.13};animation:pfloat ${9+Math.random()*12}s linear ${-Math.random()*18}s infinite;`;
+        c.appendChild(p);
+      }
+    })();
+
+    /* ═══════════════════════════════════════════════════
+       CONFETTI CELEBRATION
+    ═══════════════════════════════════════════════════ */
+    function launchConfetti() {
+      const canvas = document.getElementById('confetti-canvas');
+      const ctx = canvas.getContext('2d');
+      canvas.width = window.innerWidth;
+      canvas.height = window.innerHeight;
+      const COLORS = ['#FF3B3B','#3DDC84','#FFD700','#4A9FFF','#C084FC','#FF6E6E','#FFC048'];
+      const particles = Array.from({length: 120}, () => ({
+        x: Math.random() * canvas.width,
+        y: Math.random() * canvas.height - canvas.height,
+        r: Math.random() * 6 + 3,
+        d: Math.random() * 120 + 20,
+        color: COLORS[Math.floor(Math.random() * COLORS.length)],
+        tilt: Math.floor(Math.random() * 10) - 10,
+        tiltAngleInc: (Math.random() * 0.07) + 0.05,
+        tiltAngle: 0,
+        vx: (Math.random() - 0.5) * 3,
+        vy: Math.random() * 3 + 2,
+        alpha: 1,
+      }));
+      let frame = 0, rafId;
+      function draw() {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        particles.forEach(p => {
+          p.tiltAngle += p.tiltAngleInc;
+          p.x += p.vx + Math.sin(frame * 0.01 + p.d) * 0.5;
+          p.y += p.vy;
+          p.tilt = Math.sin(p.tiltAngle) * 12;
+          p.alpha = Math.max(0, p.alpha - 0.006);
+          ctx.save();
+          ctx.globalAlpha = p.alpha;
+          ctx.beginPath();
+          ctx.ellipse(p.x, p.y, p.r, p.r * 0.4, p.tilt, 0, Math.PI * 2);
+          ctx.fillStyle = p.color;
+          ctx.fill();
+          ctx.restore();
+        });
+        frame++;
+        if (frame < 200) rafId = requestAnimationFrame(draw);
+        else ctx.clearRect(0, 0, canvas.width, canvas.height);
+      }
+      draw();
+    }
+
+    /* ═══════════════════════════════════════════════════
+       PDF RECEIPT EXPORT (jsPDF)
+    ═══════════════════════════════════════════════════ */
+    function downloadReceipt() {
+      if (!window.jspdf) { alert('PDF library not loaded. Check your internet connection.'); return; }
+      const { jsPDF } = window.jspdf;
+      const doc = new jsPDF({ orientation:'portrait', unit:'mm', format:'a5' });
+
+      // Header
+      doc.setFillColor(17, 19, 26);
+      doc.rect(0, 0, 148, 210, 'F');
+      doc.setFillColor(255, 59, 59);
+      doc.rect(0, 0, 148, 18, 'F');
+
+      doc.setFont('helvetica','bold');
+      doc.setFontSize(16); doc.setTextColor(255,255,255);
+      doc.text('BIOVOTE', 14, 12);
+      doc.setFontSize(8); doc.setFont('helvetica','normal');
+      doc.text('Quantum Secure Electoral System', 14, 17);
+
+      // Body
+      doc.setFontSize(10); doc.setTextColor(240,242,248);
+      doc.text('VOTE RECEIPT', 74, 30, {align:'center'});
+      doc.setFontSize(7.5); doc.setTextColor(155,163,188);
+
+      const lines = [
+        ['Confirmation Code', S.lastConf || '——————'],
+        ['TX Hash', '0x' + (S.lastTxHash || '—')],
+        ['Block ID', S.lastBlock || '—'],
+        ['Timestamp', new Date().toLocaleString('en-IN')],
+        ['Language', currentLang === 'hi' ? 'हिंदी / Hindi' : 'English'],
+        ['Node Status', 'OFFLINE VERIFIED'],
+        ['Encryption', 'AES-256 + SHA-256'],
+        ['Ballot Secrecy', 'CANDIDATE NOT DISCLOSED'],
+      ];
+      let y = 42;
+      lines.forEach(([label, val]) => {
+        doc.setTextColor(155,163,188); doc.setFont('helvetica','normal'); doc.text(label + ':', 14, y);
+        doc.setTextColor(240,242,248); doc.setFont('helvetica','bold');
+        doc.text(String(val).slice(0,38), 74, y);
+        y += 9;
+        doc.setDrawColor(40,44,60); doc.line(14, y-3, 134, y-3);
+      });
+
+      // Footer
+      y += 6;
+      doc.setFontSize(6.5); doc.setTextColor(90,96,122); doc.setFont('helvetica','normal');
+      doc.text('This receipt confirms your vote was recorded. Your chosen candidate', 74, y, {align:'center'});
+      doc.text('is NOT stored in this receipt to preserve ballot secrecy.', 74, y+5, {align:'center'});
+      doc.text('BioVote Secure Electoral System · No external server involved', 74, y+11, {align:'center'});
+
+      doc.save('biovote-receipt-' + (S.lastConf || 'unknown') + '.pdf');
+      clickTone();
+    }
+
+    /* ═══════════════════════════════════════════════════
+       WEBAUTHN — Device Biometric Fallback
+       Uses browser's built-in fingerprint / Face ID / Windows Hello
+    ═══════════════════════════════════════════════════ */
+    async function startWebAuthn() {
+      const raw = document.getElementById('aid').value.replace(/\s/g,'');
+      if (raw.length !== 12) {
+        smsg('auth-msg','err', currentLang==='hi' ? 'कृपया 12 अंकों का मतदाता आईडी दर्ज करें' : 'Please enter Voter ID first');
+        return;
+      }
+      if (!window.PublicKeyCredential) {
+        smsg('auth-msg','warn','WebAuthn not supported in this browser. Use the standard scan instead.');
+        return;
+      }
+      smsg('auth-msg','info', currentLang==='hi' ? 'डिवाइस बायोमेट्रिक सत्यापन शुरू हो रहा है…' : 'Starting device biometric verification…');
+      try {
+        // Create a challenge
+        const challenge = new Uint8Array(32);
+        window.crypto.getRandomValues(challenge);
+        const credential = await navigator.credentials.create({
+          publicKey: {
+            challenge,
+            rp: { name: 'BioVote Secure Electoral System', id: location.hostname || 'localhost' },
+            user: {
+              id: new TextEncoder().encode(raw),
+              name: 'voter-' + raw.slice(0,8),
+              displayName: 'Voter ' + raw.replace(/(\d{4})(\d{4})(\d{4})/,'$1 $2 $3'),
+            },
+            pubKeyCredParams: [{ alg: -7, type: 'public-key' }, { alg: -257, type: 'public-key' }],
+            authenticatorSelection: {
+              authenticatorAttachment: 'platform', // device built-in only
+              userVerification: 'required',
+            },
+            timeout: 30000,
+          }
+        });
+        // Registration succeeded — treat as verified scan
+        smsg('auth-msg','ok','✓ Device biometric verified — proceeding to vote');
+        haptic(HAPTIC_SUCCESS);
+        tone(660,.1,'sine',.1); setTimeout(()=>tone(880,.15,'sine',.09),120);
+        // Proceed using same path as doScan completion
+        simulateScanAfterWebAuthn(raw);
+      } catch (err) {
+        if (err.name === 'NotAllowedError') {
+          smsg('auth-msg','warn','Biometric cancelled. Use standard scan instead.');
+        } else if (err.name === 'InvalidStateError') {
+          // Credential already registered — do assertion (verify)
+          try {
+            const challenge2 = new Uint8Array(32);
+            window.crypto.getRandomValues(challenge2);
+            await navigator.credentials.get({
+              publicKey: { challenge: challenge2, userVerification:'required', timeout:30000 }
+            });
+            smsg('auth-msg','ok','✓ Device biometric verified — proceeding to vote');
+            haptic(HAPTIC_SUCCESS);
+            simulateScanAfterWebAuthn(raw);
+          } catch(e2) {
+            smsg('auth-msg','err','Biometric verification failed. Try standard scan.');
+            haptic(HAPTIC_ERROR);
+          }
+        } else {
+          smsg('auth-msg','warn', 'Device biometric unavailable on this platform. Use standard scan.');
+        }
+      }
+    }
+
+    function simulateScanAfterWebAuthn(raw) {
+      if (S.voted.has(raw)) {
+        smsg('auth-msg','err','This Voter ID has already cast a vote');
+        buzzerAlarm(); haptic(HAPTIC_ERROR); return;
+      }
+      curAadhaar = raw;
+      const box = document.getElementById('scanbox');
+      box.className = 'scanbox verified';
+      document.getElementById('stxt').textContent = 'IDENTITY VERIFIED';
+      document.getElementById('vmeta').textContent = 'ID: ' + raw.replace(/(\d{4})(\d{4})(\d{4})/,'$1 $2 $3') + ' · Device biometric confirmed';
+      document.getElementById('vcard').classList.add('on');
+      encReset(); encDone(1,'OK'); encDone(2,'SHA-256'); encDone(3,'UNIQUE'); encDone(4,'SEALED ✓');
+      setTimeout(() => {
+        document.getElementById('bid').textContent = 'MH-KOL-' + Math.floor(Math.random()*5+10);
+        document.getElementById('evm-voter-tag').textContent = '✔ Verified · Ready to Vote';
+        document.querySelectorAll('.cand').forEach(c => { c.classList.remove('voted','dis'); c.style.pointerEvents=''; });
+        document.getElementById('txstrip').className = 'tx-strip';
+        closeMsg('evm-msg'); go('sevm');
+      }, 1000);
+    }
+
+    /* ═══════════════════════════════════════════════════
+       NAV
+    ═══════════════════════════════════════════════════ */
+    function go(id) {
+      document.querySelectorAll('.sc').forEach(s => s.classList.remove('on'));
+      document.getElementById(id).classList.add('on');
+    }
+    function updateWelcome() {
+      setCountUp('sw-v', S.votes);
+      const b = document.getElementById('sw-b');
+      if (b) b.textContent = 'BLK-' + S.blocks.toString(16).toUpperCase().padStart(6,'0');
+    }
+    updateWelcome();
+    function setCountUp(id, val) {
+      const el = document.getElementById(id); if (!el) return;
+      let v = parseInt(el.textContent.replace(/,/g,'')) || 0;
+      const step = Math.max(1, Math.ceil(Math.abs(val-v)/25));
+      const iv = setInterval(() => { v+=step; if(v>=val){v=val;clearInterval(iv);} el.textContent=v.toLocaleString(); }, 40);
+    }
+
+    /* ═══════════════════════════════════════════════════
+       METHOD SELECT
+    ═══════════════════════════════════════════════════ */
+    let chosenMethod = '';
+    function selMethod(m) {
+      chosenMethod = m; clickTone();
+      document.querySelectorAll('.mc').forEach(c => { c.classList.remove('sel'); c.setAttribute('aria-checked','false'); });
+      document.getElementById('m-'+m).classList.add('sel');
+      document.getElementById('m-'+m).setAttribute('aria-checked','true');
+      const L = LANG[currentLang];
+      const labels = {fp:L.fpDs, iris:L.irisDs, both:L.dualDs};
+      const msg = document.getElementById('meth-msg');
+      msg.className='msg on ok'; msg.textContent=labels[m];
+      document.getElementById('meth-next').disabled = false;
+      const head = document.getElementById('auth-head');
+      if (m==='fp') head.textContent = currentLang==='hi'?'फिंगरप्रिंट सत्यापन':'Fingerprint Verification';
+      else if (m==='iris') head.textContent = currentLang==='hi'?'आईरिस स्कैन सत्यापन':'Iris Scan Verification';
+      else head.textContent = currentLang==='hi'?'दोहरा-कारक सत्यापन':'Dual-Factor Verification';
+      if (m==='iris'||m==='both') { document.getElementById('fp-canvas-wrap').style.display='none'; document.getElementById('iris-wrap').classList.add('on'); }
+      else { document.getElementById('fp-canvas-wrap').style.display=''; document.getElementById('iris-wrap').classList.remove('on'); }
+    }
+
+    /* ═══════════════════════════════════════════════════
+       VOTER ID INPUT
+    ═══════════════════════════════════════════════════ */
+    function onAid(inp) {
+      let v = inp.value.replace(/\D/g,'').substring(0,12);
+      const p = []; for(let i=0;i<v.length;i+=4)p.push(v.substring(i,i+4));
+      inp.value = p.join(' ');
+      const ico = document.getElementById('aidico');
+      document.getElementById('dupbox').style.display='none';
+      document.getElementById('vcard').classList.remove('on');
+      if(v.length===0){inp.className='';ico.textContent='—';}
+      else if(v.length<12){inp.className='';ico.textContent='✏';}
+      else{inp.className='ok';ico.textContent='✓';}
+    }
+
+    /* ═══════════════════════════════════════════════════
+       FINGERPRINT CANVAS — with noise distortion during scan
+    ═══════════════════════════════════════════════════ */
+    const FPC = (() => {
+      const W=118,H=148,NR=36,ridges=[];
+      for(let r=0;r<NR;r++){
+        const t=r/NR,yBase=18+r*3.3,pts=[];
+        for(let s=0;s<=30;s++){
+          const xf=s/30,x=14+xf*(W-28);
+          const arch=12*Math.sin(t*Math.PI)*Math.sin(xf*Math.PI);
+          const wave=2.0*Math.sin(xf*Math.PI*2.5+r*0.6)+0.9*Math.cos(xf*Math.PI*4.8+r*0.9);
+          pts.push([x,yBase-arch+wave]);
+        }
+        const bifs=[];
+        if(Math.random()<.28){const bx=20+Math.random()*(W-40);bifs.push({x:bx,y:yBase-6*Math.sin(Math.PI*(bx-14)/(W-28)),dx:10+Math.random()*14,dy:3+Math.random()*5});}
+        ridges.push({pts,bifs});
+      }
+      const TC='M59,6 C44,6 28,16 22,30 C16,44 14,58 14,72 C14,100 28,128 42,138 C48,142 54,144 59,144 C64,144 70,142 76,138 C90,128 104,100 104,72 C104,58 102,44 96,30 C90,16 74,6 59,6 Z';
+      return{ridges,W,H,TC};
+    })();
+
+    let fpAnimIv=null,fpReveal=0,fpBeamY=0,fpBeamDir=1,fpBeamCycles=0,fpCanvas,fpCtx,fpScanMode=false;
+
+    function fpInit() {
+      fpCanvas=document.getElementById('fp-canvas');
+      fpCtx=fpCanvas.getContext('2d');
+      fpReveal=0;fpBeamY=0;fpBeamDir=1;fpBeamCycles=0;fpScanMode=false;
+      fpDraw(false,false,false);
+    }
+
+    function fpDraw(beamOn, verified, denied) {
+      const{ridges,W,H,TC}=FPC,ctx=fpCtx;
+      ctx.clearRect(0,0,W,H);ctx.save();ctx.clip(new Path2D(TC));
+      ctx.fillStyle='rgba(0,0,0,.6)';ctx.fillRect(0,0,W,H);
+      const col=verified?'#3DDC84':'#FF3B3B';
+      const al=verified||denied?.8:.5;
+
+      // ── NOISE DISTORTION LAYER during scanning (soft-light composite) ──
+      if (beamOn && fpScanMode) {
+        ctx.globalCompositeOperation = 'soft-light';
+        // Scatter random grayscale noise dots near the beam for lifelike texture
+        const noiseZone = 28; // pixels above and below beam
+        const noiseCount = 60;
+        for (let n=0; n<noiseCount; n++) {
+          const nx = Math.random() * W;
+          const ny = fpBeamY - noiseZone + Math.random() * noiseZone * 2;
+          const nv = Math.floor(Math.random() * 200 + 55);
+          const nr = Math.random() * 1.5 + 0.3;
+          ctx.beginPath(); ctx.arc(nx, ny, nr, 0, Math.PI*2);
+          ctx.fillStyle = `rgb(${nv},${nv},${nv})`;
+          ctx.globalAlpha = Math.random() * 0.4;
+          ctx.fill();
+        }
+        ctx.globalCompositeOperation = 'source-over';
+      }
+
+      // Draw ridge lines up to scan reveal point
+      ctx.globalCompositeOperation = 'source-over';
+      ridges.forEach(rd => {
+        if(rd.pts[0][1]>fpReveal+4)return;
+        ctx.beginPath();let f=true;
+        rd.pts.forEach(([x,y])=>{if(f){ctx.moveTo(x,y);f=false;}else ctx.lineTo(x,y);});
+        ctx.strokeStyle=col;ctx.globalAlpha=al;ctx.lineWidth=1.1;ctx.stroke();
+        rd.bifs.forEach(b=>{
+          if(b.y>fpReveal+4)return;
+          ctx.beginPath();ctx.moveTo(b.x,b.y);ctx.lineTo(b.x+b.dx,b.y-b.dy);ctx.lineWidth=.9;ctx.stroke();
+        });
+      });
+      ctx.globalAlpha=1;
+
+      // Scan beam
+      if(beamOn){
+        const grad=ctx.createLinearGradient(0,fpBeamY-14,0,fpBeamY+14);
+        grad.addColorStop(0,'rgba(255,59,59,0)');
+        grad.addColorStop(.4,'rgba(255,59,59,.5)');
+        grad.addColorStop(.5,'rgba(255,200,200,.7)'); // bright core
+        grad.addColorStop(.6,'rgba(255,59,59,.5)');
+        grad.addColorStop(1,'rgba(255,59,59,0)');
+        ctx.fillStyle=grad;ctx.fillRect(0,fpBeamY-14,W,28);
+      }
+
+      // Thumb outline
+      ctx.strokeStyle=col;ctx.lineWidth=1.4;ctx.globalAlpha=verified||denied?.78:.38;
+      ctx.stroke(new Path2D(TC));ctx.globalAlpha=1;ctx.restore();
+    }
+
+    function fpScan() {
+      if(fpAnimIv)clearInterval(fpAnimIv);
+      fpReveal=0;fpBeamY=0;fpBeamDir=1;fpBeamCycles=0;fpScanMode=true;
+      const SPEED=1.8,CYCLES=4,H=FPC.H;
+      fpAnimIv=setInterval(()=>{
+        fpBeamY+=SPEED*fpBeamDir;fpReveal=Math.max(fpReveal,fpBeamY);
+        if(fpBeamY>=H){fpBeamDir=-1;fpBeamCycles++;}
+        if(fpBeamY<=0&&fpBeamCycles>0)fpBeamDir=1;
+        fpDraw(true,false,false);
+        if(fpBeamCycles>=CYCLES&&fpReveal>=H-4){clearInterval(fpAnimIv);fpAnimIv=null;fpReveal=H;fpScanMode=false;fpDraw(false,false,false);}
+      },18);
+    }
+    function fpSetState(s){fpReveal=FPC.H;fpScanMode=false;fpDraw(false,s==='verified',s==='denied');}
+
+    /* ═══════════════════════════════════════════════════
+       IRIS CANVAS
+    ═══════════════════════════════════════════════════ */
+    function irisInit(){
+      const cv=document.getElementById('iris-canvas');if(!cv)return;
+      const ctx=cv.getContext('2d'),w=cv.width,h=cv.height,cx=w/2,cy=h/2;
+      ctx.clearRect(0,0,w,h);
+      for(let r=8;r<44;r+=2.5){ctx.beginPath();ctx.arc(cx,cy,r,0,Math.PI*2);ctx.strokeStyle=`rgba(255,80,80,${.05+r*.002})`;ctx.lineWidth=1;ctx.stroke();}
+      for(let a=0;a<360;a+=9){const rad=a*Math.PI/180,r1=10+Math.random()*3,r2=38+Math.random()*5;ctx.beginPath();ctx.moveTo(cx+r1*Math.cos(rad),cy+r1*Math.sin(rad));ctx.lineTo(cx+r2*Math.cos(rad),cy+r2*Math.sin(rad));ctx.strokeStyle=`rgba(255,59,59,${.04+Math.random()*.07})`;ctx.lineWidth=.8;ctx.stroke();}
+    }
+    function irisAddDots(){
+      const wrap=document.getElementById('ados');if(!wrap)return;wrap.innerHTML='';
+      for(let i=0;i<8;i++){const ang=i*45*Math.PI/180,r=58,d=document.createElement('div');d.className='ado';d.style.cssText=`left:${50+r*Math.cos(ang)*.5}%;top:${50+r*Math.sin(ang)*.5}%;animation-delay:${i*.12}s;`;wrap.appendChild(d);}
+    }
+
+    /* ═══════════════════════════════════════════════════
+       ENCRYPTION PIPELINE HELPERS
+    ═══════════════════════════════════════════════════ */
+    function encReset(){
+      [1,2,3,4].forEach(n=>{document.getElementById('enc'+n).className='enc-row';document.getElementById('enc'+n+'s').textContent='—';});
+      document.getElementById('scan-lbl').textContent='IDLE';document.getElementById('scan-lbl').style.color='';
+      document.getElementById('stream-lbl').textContent='IDLE';document.getElementById('stream-lbl').style.color='';
+      document.getElementById('hstream').innerHTML='<div style="color:var(--dim);font-size:.52rem;font-family:var(--mono);opacity:.5">— waiting for scan —</div>';
+    }
+    function encActivate(n,s){document.getElementById('enc'+n).className='enc-row active';document.getElementById('enc'+n+'s').textContent=s;}
+    function encDone(n,s){document.getElementById('enc'+n).className='enc-row done';document.getElementById('enc'+n+'s').textContent=s;}
+
+    /* ═══════════════════════════════════════════════════
+       BIO ANIMATION
+    ═══════════════════════════════════════════════════ */
+    let bioAnimIv=null;
+    function animateBio(hash,isDup){
+      const sl=document.getElementById('scan-lbl');
+      sl.textContent='SCANNING';sl.style.color='var(--ac)';
+      document.getElementById('stream-lbl').textContent='ACTIVE';document.getElementById('stream-lbl').style.color='var(--ac)';
+      const hs=document.getElementById('hstream');hs.innerHTML='';
+      if(bioAnimIv)clearInterval(bioAnimIv);
+      encActivate(1,'capturing…');
+      bioAnimIv=setInterval(()=>{
+        const l=document.createElement('div');l.className='hline';
+        l.style.cssText='font-family:var(--mono);font-size:.52rem;color:var(--ac);opacity:.52;line-height:1.5;';
+        l.textContent=genHash().match(/.{1,16}/g).join(' ');
+        hs.insertBefore(l,hs.firstChild);if(hs.children.length>5)hs.removeChild(hs.lastChild);
+      },110);
+      setTimeout(()=>{encDone(1,'OK');encActivate(2,'hashing…');},380);
+      setTimeout(()=>{encDone(2,'SHA-256');encActivate(3,'checking…');},820);
+      setTimeout(()=>{
+        clearInterval(bioAnimIv);bioAnimIv=null;
+        encDone(3,isDup?'DUPLICATE':'UNIQUE');encActivate(4,isDup?'REJECT':'sealing…');
+        sl.textContent=isDup?'DUPLICATE ⚠':'VERIFIED ✓';sl.style.color=isDup?'var(--amb)':'var(--grn)';
+        document.getElementById('stream-lbl').textContent=isDup?'BLOCKED':'UNIQUE';document.getElementById('stream-lbl').style.color=isDup?'var(--amb)':'var(--grn)';
+        hs.innerHTML='';const fl=document.createElement('div');fl.className='hline';
+        fl.style.cssText=`font-family:var(--mono);font-size:.55rem;word-break:break-all;line-height:1.5;color:${isDup?'var(--amb)':'var(--grn)'}`;
+        fl.textContent=hash;hs.appendChild(fl);
+      },1300);
+      setTimeout(()=>{encDone(4,isDup?'REJECTED':'SEALED ✓');},1900);
+    }
+
+    function addLog(hash,type){
+      const list=document.getElementById('vlist');
+      if(list.querySelector('div[style]'))list.innerHTML='';
+      const e=document.createElement('div');e.className='ve';
+      const dc={voted:'',denied:'r',dup:'a'},sl={voted:'Voted',denied:'Denied',dup:'Duplicate'},sc={voted:'v',denied:'d',dup:'a'};
+      e.innerHTML=`<div class="vdot ${dc[type]}"></div><div class="vh3">${hash.slice(0,24)}…</div><div class="vstatus ${sc[type]}">${sl[type]}</div>`;
+      list.insertBefore(e,list.firstChild);while(list.children.length>8)list.removeChild(list.lastChild);
+      document.getElementById('vcnt').textContent=Object.values(S.pv).reduce((a,b)=>a+b,0)+' votes';
+    }
+
+    /* ═══════════════════════════════════════════════════
+       SCAN LOGIC — 3s progress bar + haptics + audio ticks
+    ═══════════════════════════════════════════════════ */
+    let scanning=false,voting=false,curAadhaar='',rTimer=null;
+    function smsg(id,cls,txt){const el=document.getElementById(id);if(!el)return;el.className='msg on '+cls;el.textContent=txt;}
+    function closeMsg(id){const el=document.getElementById(id);if(el)el.className='msg';}
+
+    function doScan() {
+      const raw=document.getElementById('aid').value.replace(/\s/g,'');
+      if(raw.length!==12){smsg('auth-msg','err',currentLang==='hi'?'कृपया 12 अंकों का मतदाता आईडी दर्ज करें':'Please enter a valid 12-digit Voter ID');haptic(HAPTIC_ERROR);return;}
+      if(S.voted.has(raw)){
+        buzzerAlarm();haptic(HAPTIC_ERROR);
+        smsg('auth-msg','err',currentLang==='hi'?'इस आईडी ने पहले ही मत डाला है':'This Voter ID has already cast a vote');
+        document.getElementById('dupbox').style.display='block';
+        document.getElementById('duphsh').textContent='PREV BLOCK HASH: 0x'+generateHash(40);
+        animateBio(genHash(),true);addLog(genHash(),'dup');
+        S.suspLog.push({time:new Date().toISOString().substring(11,19),text:'Duplicate vote attempt: '+raw.slice(0,8)+'****',level:'red'});
+        save();return;
+      }
+      if(scanning)return;
+      scanning=true;curAadhaar=raw;
+
+      // ── HAPTIC: double-pulse on scan start ──
+      haptic(HAPTIC_SCAN);
+
+      document.getElementById('dupbox').style.display='none';
+      document.getElementById('vcard').classList.remove('on');
+      const box=document.getElementById('scanbox');
+      box.className='scanbox scanning';
+      document.getElementById('stxt').textContent='SCANNING…';
+      smsg('auth-msg','info',currentLang==='hi'?'बायोमेट्रिक डेटा प्रोसेस हो रहा है…':'Processing biometric data…');
+      document.getElementById('scanBtn').disabled=true;
+      const prog=document.getElementById('sprog');prog.style.display='block';prog.setAttribute('aria-valuenow','0');
+      document.getElementById('ptrack').classList.add('active');
+
+      // ── 3-SECOND PROGRESS BAR with audio ticks + stage chimes ──
+      const TOTAL_MS=3000,TICK_MS=50;
+      const STAGES=[
+        {label:'INITIALIZING',threshold:0},
+        {label:'CAPTURING',threshold:20},
+        {label:'PROCESSING',threshold:45},
+        {label:'VERIFYING',threshold:70},
+        {label:'MATCHING',threshold:90},
+      ];
+      let elapsed=0,lastStageIdx=0,lastTickPct=-1;
+      document.getElementById('pfill').style.width='0%';
+      document.getElementById('stglbl').textContent=STAGES[0].label;
+      document.getElementById('spct').textContent='0%';
+
+      const scanProgressIv=setInterval(()=>{
+        elapsed+=TICK_MS;
+        const rawPct=(elapsed/TOTAL_MS)*100;
+        const pct=Math.min(100,rawPct<95?rawPct:95+(rawPct-95)*0.3);
+        document.getElementById('pfill').style.width=pct.toFixed(1)+'%';
+        document.getElementById('spct').textContent=Math.floor(pct)+'%';
+        prog.setAttribute('aria-valuenow',Math.floor(pct));
+
+        // ── Audio tick every 50ms synced to progress bar ──
+        tickTone(pct);
+
+        // Stage changes — chime on transition
+        for(let i=STAGES.length-1;i>=0;i--){
+          if(pct>=STAGES[i].threshold&&i>lastStageIdx){
+            lastStageIdx=i;
+            document.getElementById('stglbl').textContent=STAGES[i].label;
+            stageTone(i);
+            break;
+          }
+        }
+
+        if(elapsed>=TOTAL_MS){
+          clearInterval(scanProgressIv);
+          document.getElementById('pfill').style.width='100%';
+          document.getElementById('spct').textContent='100%';
+          document.getElementById('stglbl').textContent='VERIFIED';
+          prog.setAttribute('aria-valuenow','100');
+          document.getElementById('ptrack').classList.remove('active');
+          onScanComplete(raw,box);
+        }
+      },TICK_MS);
+
+      encReset();
+      animateBio(genHash(),false);
+      if(chosenMethod!=='iris')fpScan();
+    }
+
+    function onScanComplete(raw,box){
+      scanning=false;
+      document.getElementById('scanBtn').disabled=false;
+      box.className='scanbox verified';
+      document.getElementById('stxt').textContent='IDENTITY VERIFIED';
+      if(chosenMethod!=='iris')fpSetState('verified');
+      document.getElementById('vmeta').textContent='ID: '+raw.replace(/(\d{4})(\d{4})(\d{4})/,'$1 $2 $3')+' · Biometric match confirmed';
+      document.getElementById('vcard').classList.add('on');
+      smsg('auth-msg','ok',currentLang==='hi'?'सत्यापित — अपना मत डालें':'Verified — proceed to cast your vote');
+      haptic([50,30,50]);
+      tone(660,.1,'sine',.1);setTimeout(()=>tone(880,.15,'sine',.09),120);
+      setTimeout(()=>{
+        document.getElementById('bid').textContent='MH-KOL-'+Math.floor(Math.random()*5+10);
+        document.getElementById('evm-voter-tag').textContent='✔ Verified · Ready to Vote';
+        document.querySelectorAll('.cand').forEach(c=>{c.classList.remove('voted','dis');c.style.pointerEvents='';});
+        document.getElementById('txstrip').className='tx-strip';
+        closeMsg('evm-msg');go('sevm');
+      },1200);
+    }
+
+    function cancelScan(){
+      if(fpAnimIv){clearInterval(fpAnimIv);fpAnimIv=null;}
+      scanning=false;
+      document.getElementById('scanbox').className='scanbox';
+      document.getElementById('stxt').textContent='AWAITING BIOMETRIC INPUT';
+      document.getElementById('sprog').style.display='none';
+      document.getElementById('ptrack').classList.remove('active');
+      document.getElementById('vcard').classList.remove('on');
+      document.getElementById('dupbox').style.display='none';
+      closeMsg('auth-msg');encReset();fpInit();go('sm');
+    }
+
+    /* ═══════════════════════════════════════════════════
+       CAST VOTE
+    ═══════════════════════════════════════════════════ */
+    function castVote(el){
+      if(voting)return;voting=true;
+      haptic([30,20,30,20,80]);
+      const party=el.dataset.p;
+      document.querySelectorAll('.cand').forEach(c=>{c.classList.add('dis');c.style.pointerEvents='none';});
+      el.classList.remove('dis');el.classList.add('voted');el.style.pointerEvents='none';
+      const strip=document.getElementById('txstrip');strip.className='tx-strip on';
+      ['ts0','ts1','ts2','ts3'].forEach((id,i)=>{
+        setTimeout(()=>{
+          document.getElementById(id).className='tx-row act';
+          if(i===3){
+            setTimeout(()=>{
+              ['ts0','ts1','ts2','ts3'].forEach(r=>document.getElementById(r).className='tx-row dn');
+              // generateHash() populates TX hash (40-char) and block hash
+              const txHash=generateHash(40);
+              const blockHash=generateHash(40);
+              const blockId='BLK-'+S.blocks.toString(16).toUpperCase().padStart(6,'0');
+              const confCode=Array.from({length:6},()=>Math.floor(Math.random()*10)).join('');
+              S.pv[party]++;S.votes++;S.blocks++;S.sessVotes++;
+              S.voted.add(curAadhaar);
+              S.txLog.unshift({time:new Date().toISOString().substring(11,19),block:blockId,party,hash:'0x'+txHash.slice(0,12)+'…'});
+              // Store for PDF receipt
+              S.lastTxHash=txHash; S.lastBlock=blockId+'·0x'+blockHash.slice(0,10); S.lastConf=confCode;
+              save();addLog(txHash,'voted');updateWelcome();
+              successBeep();haptic(HAPTIC_SUCCESS);
+              document.getElementById('conf-code').textContent=confCode;
+              document.getElementById('succ-hash').textContent='0x'+txHash;
+              document.getElementById('succ-block').textContent=blockId+' · 0x'+blockHash.slice(0,14)+'…';
+              go('ssucc');
+              // ── CONFETTI ──
+              launchConfetti();
+              let cnt=4;const rfill=document.getElementById('rfill');rfill.style.transition='none';rfill.style.width='100%';
+              rTimer=setInterval(()=>{cnt--;rfill.style.transition='width 1s linear';rfill.style.width=(cnt/4*100)+'%';
+                document.getElementById('redirect-txt').textContent=`Next voter in ${cnt}s…`;
+                if(cnt<=0){clearInterval(rTimer);rTimer=null;fullReset();}},1000);
+            },300);
+          }
+        },i*500);
+      });
+    }
+
+    function fullReset(){
+      voting=false;scanning=false;curAadhaar='';
+      if(fpAnimIv){clearInterval(fpAnimIv);fpAnimIv=null;}
+      document.getElementById('scanbox').className='scanbox';
+      document.getElementById('stxt').textContent='AWAITING BIOMETRIC INPUT';
+      document.getElementById('sprog').style.display='none';
+      document.getElementById('ptrack').classList.remove('active');
+      document.getElementById('vcard').classList.remove('on');
+      document.getElementById('dupbox').style.display='none';
+      document.getElementById('aid').value='';document.getElementById('aid').className='';document.getElementById('aidico').textContent='—';
+      closeMsg('auth-msg');encReset();fpInit();go('sw');
+    }
+
+    /* ═══════════════════════════════════════════════════
+       ADMIN PIN
+    ═══════════════════════════════════════════════════ */
+    let pinVal='',pinLocked=false,pinAttempts=0;
+    function openAdminGate(){document.getElementById('admin-ov').classList.add('on');pinVal='';pinAttempts=0;pinLocked=false;updPin();document.getElementById('pin-msg').className='msg';document.getElementById('phint').textContent='Default PIN: 123456';document.getElementById('pin-scr').style.display='';document.getElementById('dash-scr').style.display='none';}
+    function closeAdmin(){document.getElementById('admin-ov').classList.remove('on');}
+    function updPin(){document.querySelectorAll('.pd').forEach((d,i)=>{d.className='pd'+(i<pinVal.length?' filled':'');});}
+    function pinKey(k){if(pinLocked||pinVal.length>=6)return;clickTone();pinVal+=k;updPin();if(pinVal.length===6)pinSubmit();}
+    function pinBk(){if(pinLocked)return;pinVal=pinVal.slice(0,-1);updPin();}
+    function pinClr(){if(pinLocked)return;pinVal='';updPin();}
+    function pinSubmit(){
+      if(pinVal===ADMIN_PIN){
+        document.getElementById('pin-scr').style.display='none';document.getElementById('dash-scr').style.display='block';document.getElementById('phint').textContent='';
+        tone(880,.1,'sine',.07);refreshDash();
+      } else {
+        pinAttempts++;for(let i=0;i<6;i++)document.getElementById('pd'+i).className='pd wrong';
+        smsg('pin-msg','err','Incorrect PIN · '+(3-pinAttempts)+' attempts remaining');
+        haptic(HAPTIC_ERROR);buzzerAlarm();
+        S.suspLog.push({time:new Date().toISOString().substring(11,19),text:`Wrong admin PIN attempt #${pinAttempts}`,level:'orange'});save();
+        setTimeout(()=>{pinVal='';updPin();if(pinAttempts>=3){pinLocked=true;smsg('pin-msg','err','Locked — 15 second timeout');setTimeout(()=>{pinLocked=false;pinAttempts=0;document.getElementById('pin-msg').className='msg';},15000);}},700);
+      }
+    }
+
+    /* ═══════════════════════════════════════════════════
+       ADMIN DASHBOARD
+    ═══════════════════════════════════════════════════ */
+    function refreshDash(){
+      document.getElementById('a-tot').textContent=S.votes.toLocaleString();document.getElementById('a-sess').textContent=S.sessVotes;document.getElementById('a-blk').textContent=S.blocks.toLocaleString();document.getElementById('a-turn').textContent=(S.votes/REGISTERED*100).toFixed(1)+'%';document.getElementById('a-fraud').textContent=S.suspLog.filter(l=>l.level==='red').length;
+      const maxV=Math.max(...Object.values(S.pv),1);
+      document.getElementById('a-bars').innerHTML=Object.entries(S.pv).map(([p,v])=>
+        `<div class="mrow"><span style="font-size:.74rem;font-weight:600;color:var(--txt)">${p}</span><span style="font-family:var(--mono);font-size:.58rem;color:var(--ac)">${v} <span style="color:var(--dim);font-size:.54rem">(${S.votes?((v/S.votes)*100).toFixed(1):0}%)</span></span></div>
+         <div class="mbar"><div class="mfill" style="width:${(v/maxV*100).toFixed(1)}%;background:${PCOLS[p]};"></div></div>`).join('');
+      document.getElementById('a-susp').innerHTML=S.suspLog.length===0?'<div class="nolog">● No suspicious activity</div>':S.suspLog.slice(-5).reverse().map(e=>`<div class="logli"><div class="ldt ${e.level==='red'?'lred':'lor'}"></div><div><div class="ltxt">${e.text}</div><div class="ltm">${e.time}</div></div></div>`).join('');
+      document.getElementById('a-tx').innerHTML=S.txLog.length===0?`<div style="font-family:var(--mono);font-size:.55rem;color:var(--dim);padding:10px;letter-spacing:.05em;">No transactions yet</div>`:S.txLog.slice(0,12).map(t=>`<div class="txli"><span style="color:var(--dim)">${t.time}</span><span style="color:var(--gold)">${t.block}</span><span style="color:var(--ac3);flex:1">${t.party}</span><span style="color:var(--dim);font-size:.52rem;">${t.hash}</span></div>`).join('');
+    }
+
+    function simVotes(){const ps=Object.keys(S.pv);for(let i=0;i<10;i++){setTimeout(()=>{const p=ps[Math.floor(Math.random()*ps.length)];S.pv[p]++;S.votes++;S.blocks++;S.sessVotes++;const h=generateHash(12);S.txLog.unshift({time:new Date().toISOString().substring(11,19),block:'BLK-'+S.blocks.toString(16).toUpperCase().padStart(6,'0'),party:p,hash:'0x'+h+'…'});save();refreshDash();},i*130);}}
+
+    /* ═══════════════════════════════════════════════════
+       RESULTS
+    ═══════════════════════════════════════════════════ */
+    function openResults(){
+      const entries=Object.entries(S.pv),total=S.votes,maxV=Math.max(...Object.values(S.pv),1),winner=entries.reduce((a,b)=>b[1]>a[1]?b:a,entries[0]);
+      document.getElementById('rw-name').textContent=winner[0];document.getElementById('rw-votes').textContent=winner[1].toLocaleString()+' votes';document.getElementById('rw-pct').textContent=total?((winner[1]/total)*100).toFixed(1)+'%':'—%';document.getElementById('r-ts').textContent='Final Count · '+new Date().toLocaleString('en-IN',{dateStyle:'medium',timeStyle:'medium'});
+      document.getElementById('r-bars').innerHTML=[...entries].sort((a,b)=>b[1]-a[1]).map(([p,v],i)=>`<div class="rbar-wrap" role="listitem"><div class="rbar-top"><span class="rbar-nm">${i===0?'🏆 ':''}${p}</span><span class="rbar-cnt">${v} <span style="color:var(--dim);font-size:.56rem;">(${total?((v/total)*100).toFixed(1):0}%)</span></span></div><div class="rbar-trk"><div class="rbar-fill" style="width:${(v/maxV*100).toFixed(1)}%;background:${PCOLS[p]};transition:width 1.1s cubic-bezier(.16,1,.3,1) ${i*.12}s;"></div></div></div>`).join('');
+      document.getElementById('rs-tot').textContent=total.toLocaleString();document.getElementById('rs-turn').textContent=(total/REGISTERED*100).toFixed(1)+'%';document.getElementById('rs-fraud').textContent=S.suspLog.filter(l=>l.level==='red').length;
+      document.getElementById('results-ov').classList.add('on');
+    }
+    function closeResults(){document.getElementById('results-ov').classList.remove('on');}
+
+    function clearAndRestart(){
+      if(!confirm('⚠ Permanently erase ALL election data?\n\nThis cannot be undone.'))return;
+      if(rTimer){clearInterval(rTimer);rTimer=null;}if(fpAnimIv){clearInterval(fpAnimIv);fpAnimIv=null;}
+      S.votes=0;S.blocks=12847+Math.floor(Math.random()*500);S.sessVotes=0;Object.keys(S.pv).forEach(k=>{S.pv[k]=0;});S.voted=new Set();S.suspLog=[];S.txLog=[];voting=false;scanning=false;curAadhaar='';
+      save();document.getElementById('vlist').innerHTML='<div style="font-size:.55rem;color:var(--dim);font-family:var(--mono);text-align:center;padding:6px 0;">No activity yet</div>';document.getElementById('vcnt').textContent='0 votes';document.getElementById('results-ov').classList.remove('on');document.getElementById('admin-ov').classList.remove('on');pinVal='';pinLocked=false;pinAttempts=0;updPin();document.getElementById('pin-scr').style.display='';document.getElementById('dash-scr').style.display='none';document.getElementById('pin-msg').className='msg';
+      encReset();fpInit();document.body.style.transition='background .4s';document.body.style.background='rgba(61,220,132,.04)';setTimeout(()=>{document.body.style.background='';document.body.style.transition='';},700);go('sw');
+    }
+
+    /* ═══════════════════════════════════════════════════
+       INIT
+    ═══════════════════════════════════════════════════ */
+    fpInit();
+    irisInit();
+    irisAddDots();
+
+  </script>
+</body>
+</html>
